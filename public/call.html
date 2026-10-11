@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dial · Call</title>
+<link rel="stylesheet" href="/dial.css">
+</head>
+<body>
+<div class="band"></div>
+<header class="topbar">
+  <a class="logo" href="/">Dial<span>.</span></a>
+  <nav class="steps"><a href="/">Home</a><a class="on" href="/call.html">1 · Call</a><a href="/ledger.html">2 · Ledger</a><a href="/collect.html">3 · Collect</a></nav>
+  <div class="extra"><a href="/ngo.html">NGO payouts</a><a href="/passport.html">Income passport</a></div>
+</header>
+
+<main class="page">
+  <section class="intro">
+    <span class="eyebrow">Step 1 of 3</span>
+    <h1>Call <em>Dial.</em></h1>
+    <p class="lede">Talk like you would to a person. Try "Send fifty dollars to my mom." The demo PIN is 4179.</p>
+  </section>
+
+  <section class="card caller">
+    <button class="ring" id="ring" type="button" aria-label="Call Dial">☎</button>
+    <h2 id="call-title">Call Dial</h2>
+    <span class="timer" id="call-status">Tap the phone to start · Gemini + ElevenLabs</span>
+  </section>
+
+  <section class="chat" id="chat">
+    <p class="empty">Your conversation will show up here as you talk.</p>
+  </section>
+
+  <section id="result"></section>
+
+  <section class="backup">
+    <details>
+      <summary>No microphone? Send without voice</summary>
+      <form id="send-form" style="display:grid;gap:16px;margin-top:16px">
+        <div class="trio">
+          <label class="field"><span>Send to</span><input class="input" id="s-to" value="mom"></label>
+          <label class="field"><span>Amount (USD)</span><input class="input" id="s-amt" value="50" inputmode="decimal"></label>
+          <label class="field"><span>PIN</span><input class="input" id="s-pin" value="4179" inputmode="numeric"></label>
+        </div>
+        <button class="btn" type="submit">Send</button>
+      </form>
+    </details>
+    <div class="split">
+      <span class="label">Already sent something?</span>
+      <button class="btn ghost" id="status-btn" type="button">Did Mom get it?</button>
+    </div>
+    <div id="status-result"></div>
+  </section>
+
+  <nav class="next"><a href="/">← Home</a><a class="fwd" href="/ledger.html">Next: see it on the ledger →</a></nav>
+</main>
+
+<script src="/common.js"></script>
+<script>
+let cfg = {};
+let baselineId = 0;
+let convo = null;
+let started = 0;
+let clock = null;
+
+function showLocked(c, fromVoice) {
+  render('#result', `
+    <div class="result">
+      <span class="tick">✓</span>
+      <div><b>${usd(c.amountUsd)} locked for María López</b><br>${txLink(c.txUrl, 'View the transaction on Mantlescan ↗')}</div>
+    </div>`);
+}
+
+async function latestCheck() {
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
+  return d.ok && d.messages.length ? d.messages[0] : null;
+}
+
+// While a call is live, watch the chain for the transfer the agent creates.
+async function watchForTransfer() {
+  const c = await latestCheck();
+  if (c && c.id > baselineId) { baselineId = c.id; showLocked(c, true); }
+}
+
+function addLine(source, text) {
+  const chat = $('#chat');
+  if (chat.querySelector('.empty')) chat.innerHTML = '';
+  const you = source !== 'ai';
+  const div = document.createElement('div');
+  div.className = 'msg' + (you ? ' you' : '');
+  div.innerHTML = `<span class="label">${you ? 'Carlos' : 'Dial'}</span><p>${esc(text)}</p>`;
+  chat.appendChild(div);
+}
+
+function setCallUi(state) {
+  const ring = $('#ring');
+  ring.classList.toggle('live', state === 'live');
+  ring.textContent = state === 'live' ? '✕' : '☎';
+  ring.setAttribute('aria-label', state === 'live' ? 'Hang up' : 'Call Dial');
+  $('#call-title').textContent = state === 'live' ? 'On the call with Dial' : state === 'connecting' ? 'Connecting…' : 'Call Dial';
+  clearInterval(clock);
+  if (state === 'live') {
+    started = Date.now();
+    clock = setInterval(() => {
+      const s = Math.floor((Date.now() - started) / 1000);
+      $('#call-status').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')} · tap ✕ to hang up`;
+      watchForTransfer();
+    }, 1000);
+  }
+}
+
+$('#ring').addEventListener('click', async () => {
+  if (convo) { await convo.endSession(); return; }
+  if (!cfg.agentId) { $('#call-status').textContent = 'The voice agent is offline. Use "Send without voice" below.'; return; }
+  try {
+    setCallUi('connecting');
+    $('#call-status').textContent = 'Allow the microphone when your browser asks';
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const { Conversation } = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client/+esm');
+    $('#chat').innerHTML = '';
+    const c = await latestCheck();
+    baselineId = c ? c.id : 0;
+    convo = await Conversation.startSession({
+      agentId: cfg.agentId,
+      connectionType: 'webrtc',
+      onConnect: () => setCallUi('live'),
+      onDisconnect: () => { convo = null; setCallUi('idle'); $('#call-status').textContent = 'Call ended'; watchForTransfer(); },
+      onMessage: m => addLine(m.source, m.message),
+      onError: err => { $('#call-status').textContent = 'Call error: ' + (err?.message || err); },
+    });
+  } catch (err) {
+    convo = null;
+    setCallUi('idle');
+    $('#call-status').textContent = 'Could not start the call: ' + err.message;
+  }
+});
+
+$('#send-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const d = await busy(e.submitter, () => api('/api/send', { recipient: $('#s-to').value, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
+  if (d.ok) { baselineId = d.check_id; showLocked({ amountUsd: d.amount_usd, txUrl: d.tx_url }); }
+  else render('#result', errorBox(d.message || d.error));
+});
+
+$('#status-btn').addEventListener('click', async e => {
+  const d = await busy(e.currentTarget, () => api('/api/status?recipient=mom'), 'Checking the ledger…');
+  render('#status-result', d.ok ? `<div class="result"><span class="tick">i</span><div>${esc(d.message)}</div></div>` : errorBox(d.error));
+});
+
+config().then(c => { cfg = c; });
+</script>
+</body>
+</html>

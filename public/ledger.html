@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dial · Ledger</title>
+<link rel="stylesheet" href="/dial.css">
+</head>
+<body>
+<div class="band"></div>
+<header class="topbar">
+  <a class="logo" href="/">Dial<span>.</span></a>
+  <nav class="steps"><a href="/">Home</a><a href="/call.html">1 · Call</a><a class="on" href="/ledger.html">2 · Ledger</a><a href="/collect.html">3 · Collect</a></nav>
+  <div class="extra"><a href="/ngo.html">NGO payouts</a><a href="/passport.html">Income passport</a></div>
+</header>
+
+<main class="page">
+  <section class="intro">
+    <span class="eyebrow">Step 2 of 3</span>
+    <h1>Every dollar, <em>on the record.</em></h1>
+    <p class="lede">Transfers live in a contract on Mantle, not in our database. Locked, collected and refunded money can all be checked by anyone.</p>
+  </section>
+
+  <section class="fee">
+    <div><span class="label">Typical wire · $50</span><b><s>$3.20</s></b><span class="label">6.4% · 1–3 days</span></div>
+    <div><span class="label">Dial · $50</span><b>$0.00</b><span class="label">seconds</span></div>
+  </section>
+
+  <section class="card">
+    <div class="split"><h2>Live ledger</h2><a class="hash" id="contract" target="_blank" rel="noopener">Contract ↗</a></div>
+    <div class="timeline" id="feed"><p class="empty">Reading the blockchain…</p></div>
+  </section>
+
+  <section class="card">
+    <div class="split"><div><h2>Refund agent</h2><p class="lede" style="font-size:1rem;margin-top:6px">Runs every day on its own. Any transfer nobody collected in time goes back to the sender.</p></div></div>
+    <button class="btn ghost" id="keeper" type="button">Run it now</button>
+    <div id="keeper-result"></div>
+  </section>
+
+  <nav class="next"><a href="/call.html">← Call</a><a class="fwd" href="/collect.html">Next: María collects →</a></nav>
+</main>
+
+<script src="/common.js"></script>
+<script>
+let cfg = {};
+const kinds = {
+  CheckCreated: { dot: 'var(--accent)', title: i => `Locked for ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · expires ${new Date(i.expiresAt * 1000).toLocaleDateString()}` },
+  CheckCashed: { dot: 'var(--ok)', title: i => `Collected at ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · paid out in cash` },
+  CheckRefunded: { dot: 'var(--muted)', title: i => `Refunded to ${nameOf(cfg, i.to)}`, line: () => 'Not collected in time · returned automatically' },
+};
+
+async function loadFeed() {
+  const d = await api('/api/feed');
+  if (!d.ok) return render('#feed', errorBox(d.error));
+  render('#feed', d.items.length ? d.items.map(i => {
+    const k = kinds[i.type];
+    return `<div class="ev"><span class="dot" style="background:${k.dot}"></span><div><h3>${esc(k.title(i))}</h3><p>${esc(k.line(i))}</p>${txLink(i.txUrl, `#${i.id} · ${short(i.txHash)} ↗`)}</div><span class="amt">${usd(i.amountUsd)}</span></div>`;
+  }).join('') : '<p class="empty">No transfers yet. Make the first call.</p>');
+}
+
+$('#keeper').addEventListener('click', async e => {
+  const d = await busy(e.currentTarget, () => api('/api/keeper', {}), 'Checking every open transfer…');
+  render('#keeper-result', !d.ok ? errorBox(d.error) : `<div class="result"><span class="tick">✓</span><div>${d.refunded.length ? `Refunded ${d.refunded.length} expired transfer${d.refunded.length > 1 ? 's' : ''} to the sender.` : 'Nothing has expired. Every open transfer is still inside its window.'}</div></div>`);
+  loadFeed();
+});
+
+config().then(c => {
+  cfg = c;
+  $('#contract').href = c.checksUrl;
+  $('#contract').textContent = `Contract ${short(c.contracts.checks)} ↗`;
+  loadFeed();
+  setInterval(loadFeed, 5000);
+});
+</script>
+</body>
+</html>

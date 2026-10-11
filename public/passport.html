@@ -4,52 +4,54 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dial · Income passport</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/dial.css">
 </head>
 <body>
-<div class="wrap">
-  <nav>
-    <div class="brand">Dial</div>
-    <div class="links">
-      <a href="/">Live demo</a>
-      <a href="/ngo.html">NGO payouts</a>
-      <a class="on" href="/passport.html">Income passport</a>
-    </div>
-  </nav>
+<div class="band"></div>
+<header class="topbar">
+  <a class="logo" href="/">Dial<span>.</span></a>
+  <nav class="steps"><a href="/">Home</a><a href="/call.html">1 · Call</a><a href="/ledger.html">2 · Ledger</a><a href="/collect.html">3 · Collect</a></nav>
+  <div class="extra"><a href="/ngo.html">NGO payouts</a><a class="on" href="/passport.html">Income passport</a></div>
+</header>
 
-  <header style="display:grid; gap:6px">
-    <h1>A credit history that builds itself.</h1>
+<main class="page">
+  <section class="intro">
+    <span class="eyebrow">Proof of income</span>
+    <h1>A credit history that <em>builds itself.</em></h1>
     <p class="lede">People without bank accounts have no record of their income, so they can't get loans. Every transfer they receive through Dial is on a public ledger, so a lender can verify it without trusting us or them.</p>
-  </header>
-
-  <section class="panel" style="max-width:760px">
-    <form id="look" style="grid-template-columns: 1fr auto; align-items:end">
-      <label>Phone number <input id="phone" value="+523312345678"></label>
-      <button type="submit">Show passport</button>
-    </form>
-    <div id="out"></div>
   </section>
-</div>
+
+  <section class="card">
+    <form id="look" style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:end">
+      <label class="field"><span>Phone number</span><input class="input" id="phone" value="+523312345678"></label>
+      <button class="btn" type="submit">Show passport</button>
+    </form>
+  </section>
+
+  <section id="out"></section>
+</main>
 
 <script src="/common.js"></script>
 <script>
+const statusWord = { cashed: 'Received', open: 'Waiting', refunded: 'Returned' };
 async function load(btn) {
-  const d = await (btn ? busy(btn, () => api('/api/passport?phone=' + encodeURIComponent($('#phone').value))) : api('/api/passport?phone=' + encodeURIComponent($('#phone').value)));
-  if (!d.ok) { $('#out').innerHTML = `<div class="result err">${esc(d.error)}</div>`; return; }
-  $('#out').innerHTML = `
-    <div class="stats">
-      <div><span class="label">Transfers received</span><b>${d.transfersReceived}</b></div>
-      <div><span class="label">Total received</span><b>${usd(d.totalUsd)}</b></div>
-      <div><span class="label">Verified by</span><b>Mantle</b></div>
-    </div>
-    <a href="${d.walletUrl}" target="_blank" rel="noopener">Verify this history yourself on Mantlescan ↗</a>
-    <div class="tbl"><table>
-      <thead><tr><th>Check</th><th>Amount</th><th>Status</th><th>Proof</th></tr></thead>
-      <tbody>${d.items.length ? d.items.map(i => `<tr><td class="mono">#${i.id}</td><td>${usd(i.amountUsd)}</td><td>${i.status}</td><td><a href="${i.txUrl}" target="_blank" rel="noopener">tx ↗</a></td></tr>`).join('') : '<tr><td colspan="4" class="empty">Nothing received yet.</td></tr>'}</tbody>
-    </table></div>`;
+  const go = () => api('/api/passport?phone=' + encodeURIComponent($('#phone').value));
+  const d = btn ? await busy(btn, go, 'Reading the ledger…') : await go();
+  if (!d.ok) return render('#out', errorBox(d.error));
+  render('#out', `
+    <div class="card">
+      <section class="stats" style="border-top:0">
+        <div><span class="label">Transfers received</span><b>${d.transfersReceived}</b></div>
+        <div><span class="label">Total received</span><b>${usd(d.totalUsd)}</b></div>
+        <div><span class="label">Verified by</span><b>Mantle</b></div>
+        <div><span class="label">Edits possible</span><b>None</b></div>
+      </section>
+      ${txLink(d.walletUrl, 'Verify this history yourself on Mantlescan ↗')}
+      <div class="tbl"><table>
+        <thead><tr><th>Check</th><th>Status</th><th class="num">Amount</th><th class="num">Proof</th></tr></thead>
+        <tbody>${d.items.length ? d.items.slice().reverse().map(i => `<tr><td class="hash">#${i.id}</td><td>${statusWord[i.status] || i.status}</td><td class="num">${usd(i.amountUsd)}</td><td class="num">${txLink(i.txUrl, 'tx ↗')}</td></tr>`).join('') : '<tr><td colspan="4" class="empty">Nothing received yet.</td></tr>'}</tbody>
+      </table></div>
+    </div>`);
 }
 $('#look').addEventListener('submit', e => { e.preventDefault(); load(e.submitter); });
 load();

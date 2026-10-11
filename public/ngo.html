@@ -4,33 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dial · NGO payouts</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/dial.css">
 </head>
 <body>
-<div class="wrap">
-  <nav>
-    <div class="brand">Dial</div>
-    <div class="links">
-      <a href="/">Live demo</a>
-      <a class="on" href="/ngo.html">NGO payouts</a>
-      <a href="/passport.html">Income passport</a>
-    </div>
-  </nav>
+<div class="band"></div>
+<header class="topbar">
+  <a class="logo" href="/">Dial<span>.</span></a>
+  <nav class="steps"><a href="/">Home</a><a href="/call.html">1 · Call</a><a href="/ledger.html">2 · Ledger</a><a href="/collect.html">3 · Collect</a></nav>
+  <div class="extra"><a class="on" href="/ngo.html">NGO payouts</a><a href="/passport.html">Income passport</a></div>
+</header>
 
-  <header style="display:grid; gap:6px">
-    <h1>Pay hundreds of families in one transaction.</h1>
-    <p class="lede">For aid groups and disaster relief. Paste phone numbers and amounts. Each family gets a text with a cash-out code, no bank account or smartphone needed. Anything not collected returns to your organization automatically, and every dollar is visible on-chain.</p>
-  </header>
+<main class="page">
+  <section class="intro">
+    <span class="eyebrow">For aid groups and disaster relief</span>
+    <h1>Pay hundreds of families in <em>one transaction.</em></h1>
+    <p class="lede">Each family gets a text with a cash-out code. No bank account or smartphone needed. Anything not collected returns to your organization automatically, and every dollar is visible on-chain.</p>
+  </section>
 
-  <div class="board" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr)">
-    <section class="panel">
-      <span class="label">Relief Fund · test balance <span id="bal">…</span> AUSD</span>
-      <form id="bulk">
-        <label>One family per line: phone, amount in USD
-          <textarea id="rows">+50937110001, 40
+  <section class="card">
+    <div class="split"><h2>New payout</h2><span class="label">Relief Fund balance · <span id="bal">…</span> AUSD</span></div>
+    <form id="bulk" style="display:grid;gap:18px">
+      <label class="field"><span>One family per line: phone, amount in USD</span>
+        <textarea class="input" id="rows">+50937110001, 40
 +50937110002, 40
 +50937110003, 60
 +50937110004, 40
@@ -38,21 +33,14 @@
 +50937110006, 40
 +50937110007, 60
 +50937110008, 40</textarea>
-        </label>
-        <label>Collect within (minutes)
-          <input id="ttl" value="10080" inputmode="numeric">
-        </label>
-        <button type="submit">Send all payouts</button>
-      </form>
-      <p class="muted" style="font-size:0.85rem">Tip for the demo: set 2 minutes, then run the refund agent on the live demo page to show unclaimed aid coming back.</p>
-    </section>
+      </label>
+      <label class="field"><span>Families must collect within (minutes)</span><input class="input" id="ttl" value="10080" inputmode="numeric"></label>
+      <button class="btn" type="submit">Send all payouts</button>
+    </form>
+  </section>
 
-    <section class="panel">
-      <span class="label">Result</span>
-      <div id="out"><p class="empty">The payouts and their claim codes will appear here.</p></div>
-    </section>
-  </div>
-</div>
+  <section id="out"></section>
+</main>
 
 <script src="/common.js"></script>
 <script>
@@ -64,18 +52,21 @@ $('#bulk').addEventListener('submit', async e => {
   e.preventDefault();
   const rows = $('#rows').value.split('\n').map(l => l.split(',').map(s => s.trim())).filter(r => r[0]).map(([phone, amount]) => ({ phone, amount: Number(amount) }));
   const d = await busy(e.submitter, () => api('/api/bulk', { rows, ttlMinutes: Number($('#ttl').value) }));
-  if (!d.ok) { $('#out').innerHTML = `<div class="result err">${esc(d.error)}</div>`; return; }
-  $('#out').innerHTML = `
-    <div class="stats">
-      <div><span class="label">Families</span><b>${d.count}</b></div>
-      <div><span class="label">Total</span><b>${usd(d.totalUsd)}</b></div>
-      <div><span class="label">Transactions</span><b>1</b></div>
-    </div>
-    <a href="${d.txUrl}" target="_blank" rel="noopener">View the single transaction on Mantlescan ↗</a>
-    <div class="tbl"><table>
-      <thead><tr><th>Check</th><th>Phone</th><th>Amount</th><th>Code (sent by text)</th></tr></thead>
-      <tbody>${rows.map((r, i) => `<tr><td class="mono">#${d.ids[i]}</td><td class="mono">${esc(r.phone)}</td><td>${usd(r.amount)}</td><td class="mono">${d.codes[i]}</td></tr>`).join('')}</tbody>
-    </table></div>`;
+  if (!d.ok) return render('#out', errorBox(d.error));
+  render('#out', `
+    <div class="card">
+      <section class="stats" style="border-top:0">
+        <div><span class="label">Families</span><b>${d.count}</b></div>
+        <div><span class="label">Total</span><b>${usd(d.totalUsd)}</b></div>
+        <div><span class="label">Transactions</span><b>1</b></div>
+        <div><span class="label">Fees</span><b>$0</b></div>
+      </section>
+      ${txLink(d.txUrl, 'View the single transaction on Mantlescan ↗')}
+      <div class="tbl"><table>
+        <thead><tr><th>Check</th><th>Phone</th><th class="num">Amount</th><th class="num">Code (sent by text)</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr><td class="hash">#${d.ids[i]}</td><td>${esc(r.phone)}</td><td class="num">${usd(r.amount)}</td><td class="num hash">${d.codes[i]}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`);
   loadBal();
 });
 loadBal();

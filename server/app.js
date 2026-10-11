@@ -132,6 +132,12 @@ app.get('/api/config', (req, res) => res.json({
   sender: { name: carlos.name, city: carlos.city, phone: carlos.phone },
   receiver: { name: 'María López', city: 'Guadalajara, MX', phone: '+523312345678' },
   shop: { id: 'lupita', ...shops.lupita },
+  names: {
+    [chain.sender.address]: 'Carlos',
+    [chain.walletForPhone('+523312345678').address]: 'María López',
+    [chain.shopWallet.address]: 'Abarrotes Lupita',
+    [chain.deployer.address]: 'Relief Fund',
+  },
 }));
 
 module.exports = app;
