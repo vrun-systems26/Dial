@@ -7,10 +7,10 @@
 <title>Dial · Your texts</title>
 <link rel="stylesheet" href="/dial.css">
 <style>
-  .page.phone-page { max-width: 520px; padding-bottom: 60px; }
-  .how { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
-  .how li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; color: var(--muted); }
-  .how li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-family: var(--mono); font-size: .85rem; }
+  .page.phone-page { max-width: 520px; padding-bottom: var(--space-3xl); }
+  .how { display: grid; gap: var(--space-xs); margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  .how li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: var(--space-xs); align-items: start; color: var(--color-muted); }
+  .how li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--color-accent); color: var(--color-accent); display: grid; place-items: center; font-family: var(--font-mono); font-size: var(--text-sm); }
 </style>
 </head>
 <body>

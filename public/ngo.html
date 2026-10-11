@@ -93,19 +93,19 @@ async function loadReport() {
   if (!r.ok) return;
   $('#r-contract').href = r.contractUrl;
   const pct = v => r.sentUsd ? Math.round((v / r.sentUsd) * 100) : 0;
-  const bar = (label, v, color) => `<div class="bar"><div class="split" style="justify-content:space-between"><span>${label}</span><b>${usd(v)} · ${pct(v)}%</b></div><div class="track"><span style="width:${pct(v)}%;background:${color}"></span></div></div>`;
+  const bar = (label, v, color) => `<div class="bar"><div class="split" style="justify-content:space-between"><span>${label}</span><b>${usd(v)} · ${pct(v)}%</b></div><div class="track"><span style="--p:${pct(v) / 100};background:${color}"></span></div></div>`;
   render('#report', `
     <div class="split"><h2>Donor report</h2><a class="hash" href="${r.contractUrl}" target="_blank" rel="noopener">Verify on Mantlescan ↗</a></div>
     <section class="stats" style="border-top:0">
       <div><span class="label">Families paid</span><b>${r.families}</b></div>
       <div><span class="label">Sent</span><b>${usd(r.sentUsd)}</b></div>
       <div><span class="label">In families' hands</span><b>${usd(r.collectedUsd)}</b></div>
-      <div><span class="label">Lost or stolen</span><b>$0</b></div>
+      <div><span class="label">Unaccounted for</span><b>${usd(Math.max(0, r.sentUsd - r.collectedUsd - r.waitingUsd - r.expiredUsd - r.returnedUsd))}</b></div>
     </section>
-    ${bar('Collected as cash', r.collectedUsd, 'var(--ok)')}
-    ${bar('Waiting to be collected', r.waitingUsd + r.expiredUsd, 'var(--accent)')}
-    ${bar('Returned to the fund automatically', r.returnedUsd, 'var(--muted)')}
-    <p class="hint">Every dollar is either with a family, still claimable, or back in the fund. Anyone can check this on the public ledger.</p>`);
+    ${bar('Collected as cash', r.collectedUsd, 'var(--color-ok)')}
+    ${bar('Waiting to be collected', r.waitingUsd + r.expiredUsd, 'var(--color-accent)')}
+    ${bar('Returned to the fund automatically', r.returnedUsd, 'var(--color-muted)')}
+    <p class="hint">Every dollar is either with a family, still claimable, or back in the fund, computed live from the public ledger.</p>`);
 }
 loadBal();
 loadReport();

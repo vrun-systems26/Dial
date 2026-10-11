@@ -45,9 +45,9 @@
 <script>
 let cfg = {};
 const kinds = {
-  CheckCreated: { dot: 'var(--accent)', title: i => `Locked for ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)}` },
-  CheckCashed: { dot: 'var(--ok)', title: i => `Collected at ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · paid out in cash` },
-  CheckRefunded: { dot: 'var(--muted)', title: i => `Refunded to ${nameOf(cfg, i.to)}`, line: () => 'Not collected in time · returned automatically' },
+  CheckCreated: { dot: 'var(--color-accent)', title: i => `Locked for ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)}` },
+  CheckCashed: { dot: 'var(--color-ok)', title: i => `Collected at ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · paid out in cash` },
+  CheckRefunded: { dot: 'var(--color-muted)', title: i => `Refunded to ${nameOf(cfg, i.to)}`, line: () => 'Not collected in time · returned automatically' },
 };
 
 let lastAutoRefund = 0;
@@ -67,16 +67,16 @@ async function loadFeed() {
   const expired = d.items.filter(i => i.type === 'CheckCreated' && !settled.has(i.id) && i.expiresAt <= now);
   if (expired.length && Date.now() - lastAutoRefund > 8000) {
     lastAutoRefund = Date.now();
-    render('#keeper-result', `<div class="result"><span class="tick">↺</span><div>${expired.length} transfer${expired.length > 1 ? 's' : ''} ran out of time. The refund agent is sending the money back…</div></div>`);
+    render('#keeper-result', `<div class="result"><span class="tick">${ICON.undo}</span><div>${expired.length} transfer${expired.length > 1 ? 's' : ''} ran out of time. The refund agent is sending the money back…</div></div>`);
     const r = await api('/api/keeper', {});
-    if (r.ok && r.refunded.length) render('#keeper-result', `<div class="result"><span class="tick">✓</span><div>Refund agent returned ${usd(r.refunded.reduce((s, x) => s + x.amountUsd, 0))} to the sender. ${txLink(r.refunded[0].txUrl, 'View ↗')}</div></div>`);
+    if (r.ok && r.refunded.length) render('#keeper-result', `<div class="result"><span class="tick">${ICON.check}</span><div>Refund agent returned ${usd(r.refunded.reduce((s, x) => s + x.amountUsd, 0))} to the sender. ${txLink(r.refunded[0].txUrl, 'View ↗')}</div></div>`);
     loadFeed();
   }
 }
 
 $('#keeper').addEventListener('click', async e => {
   const d = await busy(e.currentTarget, () => api('/api/keeper', {}), 'Checking every open transfer…');
-  render('#keeper-result', !d.ok ? errorBox(d.error) : `<div class="result"><span class="tick">✓</span><div>${d.refunded.length ? `Refunded ${d.refunded.length} expired transfer${d.refunded.length > 1 ? 's' : ''} to the sender.` : 'Nothing has expired. Every open transfer is still inside its window.'}</div></div>`);
+  render('#keeper-result', !d.ok ? errorBox(d.error) : `<div class="result"><span class="tick">${ICON.check}</span><div>${d.refunded.length ? `Refunded ${d.refunded.length} expired transfer${d.refunded.length > 1 ? 's' : ''} to the sender.` : 'Nothing has expired. Every open transfer is still inside its window.'}</div></div>`);
   loadFeed();
 });
 

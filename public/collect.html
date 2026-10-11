@@ -22,9 +22,8 @@
     <p class="lede">They get a text with a code. At any partner shop, the shopkeeper enters it and hands over cash. No bank, no app.</p>
   </section>
 
-  <section class="phone">
-    <span class="notch"></span>
-    <span class="label" style="text-align:center">Messages · <span id="ph-num">Dial</span></span>
+  <section class="thread" aria-label="Text messages on the receiver's phone">
+    <div class="thread-head"><span class="label">Texts to <span id="ph-num">their phone</span></span></div>
     <div id="inbox" style="display:grid;gap:16px"><p class="empty">Checking for texts…</p></div>
   </section>
 
@@ -82,7 +81,8 @@ const link = receiverLinkFor(phone);
 if (link) {
   $('#ph-link').href = link;
   $('#ph-link').textContent = 'Their private link ↗';
-  new QRCode($('#qr'), { text: link, width: 148, height: 148, colorDark: '#0c2a22', colorLight: '#efe8d2' });
+  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  new QRCode($('#qr'), { text: link, width: 148, height: 148, colorDark: tok('--color-qr-dark'), colorLight: tok('--color-qr-light') });
 } else {
   $('#ph-link').href = '/call.html';
   $('#ph-link').textContent = 'Open the Call page once to create their private link →';

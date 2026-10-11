@@ -43,7 +43,7 @@
   </section>
 
   <section class="card caller">
-    <button class="ring" id="ring" type="button" aria-label="Call Dial">☎</button>
+    <button class="ring" id="ring" type="button" aria-label="Call Dial"></button>
     <h2 id="call-title">Call Dial</h2>
     <span class="timer" id="call-status">Tap the phone to start</span>
   </section>
@@ -87,7 +87,7 @@ let clock = null;
 function showLocked(c, fromVoice) {
   render('#result', `
     <div class="result">
-      <span class="tick">✓</span>
+      <span class="tick">${ICON.check}</span>
       <div><b>${usd(c.amountUsd)} locked for ${esc(getNames().recipient)}</b><br>${txLink(c.txUrl, 'View the transaction on Mantlescan ↗')}</div>
     </div>`);
 }
@@ -116,7 +116,7 @@ function addLine(source, text) {
 function setCallUi(state) {
   const ring = $('#ring');
   ring.classList.toggle('live', state === 'live');
-  ring.textContent = state === 'live' ? '✕' : '☎';
+  ring.innerHTML = state === 'live' ? ICON.hangup : ICON.phone;
   ring.setAttribute('aria-label', state === 'live' ? 'Hang up' : 'Call Dial');
   $('#call-title').textContent = state === 'live' ? 'On the call with Dial' : state === 'connecting' ? 'Connecting…' : 'Call Dial';
   clearInterval(clock);
@@ -166,7 +166,7 @@ $('#send-form').addEventListener('submit', async e => {
 
 $('#status-btn').addEventListener('click', async e => {
   const d = await busy(e.currentTarget, () => api('/api/status?recipient=' + encodeURIComponent(getNames().recipient) + '&phone=' + encodeURIComponent(receiverPhone())), 'Checking the ledger…');
-  render('#status-result', d.ok ? `<div class="result"><span class="tick">i</span><div>${esc(d.message)}</div></div>` : errorBox(d.error));
+  render('#status-result', d.ok ? `<div class="result"><span class="tick">${ICON.info}</span><div>${esc(d.message)}</div></div>` : errorBox(d.error));
 });
 
 function showPhoneHint() {
@@ -175,6 +175,7 @@ function showPhoneHint() {
     ? (receiverLinkFor(receiverPhone()) ? `Their private link: <a href="${receiverLinkFor(receiverPhone())}" target="_blank" rel="noopener">${esc(n.phone)} ↗</a>${cfg.smsEnabled ? ' · sent by real SMS too' : ''}` : 'Saving creates their private link.')
     : 'No number saved, so transfers go to the demo phone on the Collect page.';
 }
+$('#ring').innerHTML = ICON.phone;
 $('#n-sender').value = getNames().sender;
 $('#n-recipient').value = getNames().recipient;
 $('#n-phone').value = getNames().phone;
@@ -189,8 +190,9 @@ $('#names-form').addEventListener('submit', async e => {
   });
   await refreshReceiverLink($('#s-pin').value);
   showPhoneHint();
-  e.submitter.textContent = 'Saved ✓';
-  setTimeout(() => { e.submitter.textContent = 'Save'; }, 1500);
+  e.submitter.textContent = 'Saved';
+  e.submitter.dataset.state = 'success';
+  setTimeout(() => { e.submitter.textContent = 'Save'; delete e.submitter.dataset.state; }, 1500);
 });
 
 config().then(async c => {

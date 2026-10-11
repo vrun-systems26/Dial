@@ -15,11 +15,32 @@ async function api(path, body) {
   }
 }
 
+// Hand-built icons (one family, stroke-only, aria-hidden).
+const ICON = {
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  hangup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 11v6M12 7.5v.01"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+};
+
+// Button states: loading while working, a brief error state on failure, silent on success.
 async function busy(btn, fn, label = 'Waiting for the blockchain…') {
   const original = btn.textContent;
   btn.disabled = true;
+  btn.dataset.state = 'loading';
+  btn.setAttribute('aria-busy', 'true');
   btn.textContent = label;
-  try { return await fn(); } finally { btn.disabled = false; btn.textContent = original; }
+  let out;
+  try { out = await fn(); return out; } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    btn.textContent = original;
+    if (out && out.ok === false) {
+      btn.dataset.state = 'error';
+      setTimeout(() => { if (btn.dataset.state === 'error') delete btn.dataset.state; }, 1800);
+    } else delete btn.dataset.state;
+  }
 }
 
 // Only touch the DOM when content actually changes (keeps polling flicker-free).

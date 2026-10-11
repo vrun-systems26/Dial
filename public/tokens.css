@@ -1,0 +1,79 @@
+/* Hallmark · tokens · theme: custom "Banknote" (studied from the approved mockup)
+ * paper oklch(26% 0.042 168) note-green · accent oklch(77% 0.11 85) brass
+ * display Libre Caslon Text · body Archivo · utility JetBrains Mono
+ * axes: dark / high-contrast-serif / warm
+ */
+@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  color-scheme: dark;
+
+  /* Colour: every neutral is tinted toward the note-green anchor */
+  --color-paper: oklch(26% 0.042 168);
+  --color-paper-2: oklch(29.5% 0.046 168);
+  --color-paper-3: oklch(32.5% 0.05 168);
+  --color-ink: oklch(93% 0.025 90);
+  --color-muted: oklch(77% 0.03 145);
+  --color-rule: oklch(40% 0.05 168);
+  --color-accent: oklch(77% 0.11 85);
+  --color-accent-hover: oklch(82% 0.11 85);
+  --color-accent-ink: oklch(22% 0.025 100);
+  --color-accent-wash: oklch(77% 0.11 85 / 0.1);
+  --color-engrave: oklch(77% 0.11 85 / 0.06);
+  --color-ok: oklch(82% 0.1 155);
+  --color-ok-wash: oklch(35% 0.055 160);
+  --color-warn: oklch(80% 0.09 40);
+  --color-warn-wash: oklch(29% 0.05 40);
+  --color-focus: oklch(86% 0.13 85);
+  --color-scrim: oklch(29.5% 0.046 168 / 0.94);
+  --color-qr-dark: oklch(26% 0.042 168);
+  --color-qr-light: oklch(93% 0.025 90);
+
+  /* Type: 2 + 1 */
+  --font-display: "Libre Caslon Text", Georgia, "Times New Roman", serif;
+  --font-body: Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --text-xs: 0.78rem;
+  --text-sm: 0.9rem;
+  --text-base: 1.125rem;
+  --text-md: 1.2rem;
+  --text-lg: 1.4rem;
+  --text-xl: 1.85rem;
+  --text-2xl: 2.4rem;
+  --text-stat: 2.1rem;
+  --text-figure: 3.2rem;
+  --text-display: clamp(2.9rem, 6.4vw, 5rem);
+
+  /* Space: 4 pt scale */
+  --space-3xs: 4px;
+  --space-2xs: 8px;
+  --space-xs: 12px;
+  --space-sm: 16px;
+  --space-md: 20px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 44px;
+  --space-3xl: 64px;
+  --space-4xl: 112px;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+  --rule-hair: 1px;
+  --control-h: 52px;
+
+  /* Motion: strong custom curves, short durations */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-micro: 140ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  /* Surfaces */
+  --band: linear-gradient(90deg, transparent, var(--color-accent) 20%, var(--color-accent) 80%, transparent);
+  --texture:
+    repeating-radial-gradient(circle at 85% -10%, transparent 0 22px, var(--color-engrave) 22px 23px),
+    repeating-radial-gradient(circle at -10% 110%, transparent 0 30px, var(--color-engrave) 30px 31px);
+}
