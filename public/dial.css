@@ -33,7 +33,7 @@ h1, h2, h3 {
   overflow-wrap: anywhere;
   min-width: 0;
 }
-h1 { font-family: var(--font-hero); font-weight: 400; font-size: var(--text-display); line-height: 0.95; letter-spacing: 0.02em; }
+h1 { font-family: var(--font-hero); font-weight: 400; font-size: var(--text-display); line-height: 0.95; letter-spacing: 0.03em; -webkit-text-stroke: 0.035em currentColor; paint-order: stroke fill; }
 h1 em, h2 em { font-style: normal; color: var(--color-accent); }
 h2 { font-size: var(--text-xl); line-height: 1.12; }
 h3 { font-size: var(--text-lg); line-height: 1.2; }
