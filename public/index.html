@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dial-a-Dollar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">Dial-a-<span>Dollar</span></div>
+    <div class="links">
+      <a class="on" href="/">Live demo</a>
+      <a href="/ngo.html">NGO payouts</a>
+      <a href="/passport.html">Income passport</a>
+    </div>
+  </nav>
+
+  <header style="display:grid; gap:6px">
+    <h1>Send money home with a phone call.</h1>
+    <p class="lede">Talk to the agent in English or Spanish. It locks AUSD stablecoin for your family on Mantle, they collect cash at a corner shop with a 6-digit code, and anything unclaimed comes back to you automatically.</p>
+  </header>
+
+  <div class="board">
+    <!-- Sender -->
+    <section class="panel">
+      <div class="panel-top"><span class="who" id="sender-name">Carlos · Oakland</span><span class="label">Sender</span></div>
+      <div class="callbox">
+        <span class="label">Voice agent · ElevenLabs + Gemini</span>
+        <button id="call" type="button">Call Dial-a-Dollar</button>
+        <span class="muted" id="call-status" style="font-size:0.85rem">Try: "Send fifty dollars to my mom." Demo PIN: 4179.</span>
+      </div>
+      <div id="transcript" style="display:grid; gap:6px"></div>
+
+      <details>
+        <summary class="muted" style="cursor:pointer">Backup: send without voice</summary>
+        <form id="send-form" style="margin-top:8px">
+          <div class="row">
+            <label>To <input id="s-to" value="mom"></label>
+            <label>Amount (USD) <input id="s-amt" value="50" inputmode="decimal"></label>
+          </div>
+          <label>PIN <input id="s-pin" value="4179" inputmode="numeric"></label>
+          <button type="submit">Send</button>
+        </form>
+      </details>
+      <div id="send-result"></div>
+      <button class="ghost" id="status-btn" type="button">Did Mom get it?</button>
+      <div id="status-result"></div>
+    </section>
+
+    <!-- Ledger -->
+    <section class="panel">
+      <div class="panel-top"><span class="who">Mantle blockchain</span><a class="label" id="contract-link" target="_blank" rel="noopener">Contract ↗</a></div>
+      <div class="compare">
+        <div class="cmp old"><span class="label">Typical wire, $50</span><b>≈ $3.20</b><span class="muted" style="font-size:0.78rem">about 6.4%, 1–3 days</span></div>
+        <div class="cmp new"><span class="label">Dial-a-Dollar</span><b>$0.00</b><span class="muted" style="font-size:0.78rem">gas paid by us, seconds</span></div>
+      </div>
+      <div class="feed" id="feed"><p class="empty">Loading the ledger…</p></div>
+      <button class="ghost" id="keeper" type="button">Run the refund agent now</button>
+      <div id="keeper-result"></div>
+    </section>
+
+    <!-- Receiver + shop -->
+    <section class="panel">
+      <div class="panel-top"><span class="who">María · Guadalajara</span><span class="label">Receiver's phone</span></div>
+      <div id="inbox"><p class="empty">No texts yet.</p></div>
+      <div class="panel-top" style="padding-top:8px; border-top:1px solid var(--line)"><span class="who">Abarrotes Lupita</span><span class="label">Cash-out shop</span></div>
+      <form id="cash-form">
+        <label>Customer's phone <input id="c-phone" value="+523312345678"></label>
+        <label>6-digit code <input id="c-code" inputmode="numeric" maxlength="7" placeholder="482913"></label>
+        <button type="submit">Pay out cash</button>
+      </form>
+      <div id="cash-result"></div>
+    </section>
+  </div>
+</div>
+
+<script src="/common.js"></script>
+<script>
+const typeLabel = { CheckCreated: 'Transfer locked', CheckCashed: 'Collected at shop', CheckRefunded: 'Refunded' };
+const pill = { CheckCreated: ['open', 'locked'], CheckCashed: ['ok', 'cashed'], CheckRefunded: ['warn', 'refunded'] };
+let cfg = {};
+
+async function loadFeed() {
+  const d = await api('/api/feed');
+  if (!d.ok) return;
+  $('#feed').innerHTML = d.items.length ? d.items.map(i => `
+    <div class="tx">
+      <div class="tx-top"><span class="tx-type">${typeLabel[i.type]} · #${i.id}</span><span class="pill ${pill[i.type][0]}">${pill[i.type][1]}</span></div>
+      <span>${usd(i.amountUsd)} AUSD ${i.from ? `· ${short(i.from)} → ` : '→ '}${short(i.to)}</span>
+      <a class="mono" href="${i.txUrl}" target="_blank" rel="noopener">${short(i.txHash)} on Mantlescan ↗</a>
+    </div>`).join('') : '<p class="empty">No transfers yet. Make the first call.</p>';
+}
+
+async function loadInbox() {
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
+  if (!d.ok) return;
+  const open = d.messages.filter(m => m.status === 'open');
+  $('#inbox').innerHTML = open.length ? open.map(m => `
+    <div class="sms">
+      <span>Carlos te envió <b>${usd(m.amountUsd)} USD</b>. Cóbralo en cualquier tienda Dial-a-Dollar con este código. Vence el ${new Date(m.expiresAt * 1000).toLocaleDateString('es-MX')}.</span>
+      <span class="code">${m.code}</span>
+    </div>`).join('') : '<p class="empty">No texts waiting. Collected and refunded transfers disappear from here.</p>';
+}
+
+function show(el, ok, html) { $(el).innerHTML = `<div class="result ${ok ? 'ok' : 'err'}">${html}</div>`; }
+
+$('#send-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = e.submitter;
+  const d = await busy(btn, () => api('/api/send', { recipient: $('#s-to').value, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
+  show('#send-result', d.ok, esc(d.message || d.error) + (d.tx_url ? ` <a href="${d.tx_url}" target="_blank" rel="noopener">View transaction ↗</a>` : ''));
+  refresh();
+});
+
+$('#status-btn').addEventListener('click', async e => {
+  const d = await busy(e.currentTarget, () => api('/api/status?recipient=mom'));
+  show('#status-result', d.ok, esc(d.message || d.error));
+});
+
+$('#cash-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const d = await busy(e.submitter, () => api('/api/cashout', { phone: $('#c-phone').value, code: $('#c-code').value, shopId: 'lupita' }));
+  if (d.ok) show('#cash-result', true, `Hand the customer <div class="big">${d.payoutLocal.toLocaleString()} ${d.currency}</div>${usd(d.amountUsd)} AUSD was paid to your shop on-chain. <a href="${d.txUrl}" target="_blank" rel="noopener">View transaction ↗</a>`);
+  else show('#cash-result', false, esc(d.error));
+  $('#c-code').value = '';
+  refresh();
+});
+
+$('#keeper').addEventListener('click', async e => {
+  const d = await busy(e.currentTarget, () => api('/api/keeper', {}));
+  show('#keeper-result', d.ok, d.ok ? (d.refunded.length ? `Refunded ${d.refunded.length} expired transfer(s) to the sender.` : 'Nothing has expired yet. Every open transfer is still within its 7 days.') : esc(d.error));
+  refresh();
+});
+
+// ---- Voice call (ElevenLabs Agents) ----
+let convo = null;
+function addLine(who, text) {
+  const div = document.createElement('div');
+  div.className = 'sms';
+  div.style.background = who === 'agent' ? 'var(--bg)' : 'var(--accent-soft)';
+  div.innerHTML = `<span class="label">${who === 'agent' ? 'Agent' : 'Carlos'}</span><span>${esc(text)}</span>`;
+  $('#transcript').appendChild(div);
+}
+$('#call').addEventListener('click', async () => {
+  if (convo) { await convo.endSession(); return; }
+  if (!cfg.agentId) { $('#call-status').textContent = 'The voice agent is not connected yet. Use the backup form below.'; return; }
+  try {
+    $('#call-status').textContent = 'Connecting…';
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const { Conversation } = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client/+esm');
+    $('#transcript').innerHTML = '';
+    convo = await Conversation.startSession({
+      agentId: cfg.agentId,
+      connectionType: 'webrtc',
+      onConnect: () => { $('#call').textContent = 'Hang up'; $('#call-status').textContent = 'On the call. Speak normally.'; },
+      onDisconnect: () => { convo = null; $('#call').textContent = 'Call Dial-a-Dollar'; $('#call-status').textContent = 'Call ended.'; refresh(); },
+      onMessage: m => { addLine(m.source === 'ai' ? 'agent' : 'user', m.message); refresh(); },
+      onError: err => { $('#call-status').textContent = 'Call error: ' + (err?.message || err); },
+    });
+  } catch (err) {
+    convo = null;
+    $('#call-status').textContent = 'Could not start the call: ' + err.message;
+  }
+});
+
+async function refresh() { await Promise.all([loadFeed(), loadInbox()]); }
+
+(async () => {
+  cfg = await api('/api/config');
+  $('#contract-link').href = cfg.checksUrl;
+  await refresh();
+  setInterval(refresh, 5000);
+})();
+</script>
+</body>
+</html>

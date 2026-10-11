@@ -1,0 +1,11 @@
+{
+  "chainId": 5003,
+  "deployBlock": 45099861,
+  "token": "0x6E7D3e33e938A315A16dFa6c6146C6A8A1d1C974",
+  "checks": "0x49F1760C86783a5a383E4Fe387eF438D1862BaCa",
+  "wallets": {
+    "deployer": "0x0EFe26Bae3F44930855BA07283F08CD5Aed9E551",
+    "sender": "0xCA9B3c21060cd72853b0D4684312CFF94B532D8B",
+    "shop": "0xC886a28C31accc8959509c558aEE05bed40b0A33"
+  }
+}

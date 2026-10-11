@@ -1,0 +1,323 @@
+<title>Dial-a-Dollar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working demo board first (call → ledger → cash-out), then the flowchart, stack and build plan as a single reading column. */
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --ink: #16242b;
+  --muted: #5b6a70;
+  --line: #dfe2dd;
+  --accent: #d9861a;        /* marigold: money moving home */
+  --accent-soft: #fbecd6;
+  --ledger: #1d5c63;        /* deep teal: the XRP Ledger */
+  --ledger-soft: #dcecec;
+  --ok: #2f7d4f;
+  --ok-soft: #dff1e5;
+  --warn: #b5481f;
+  --warn-soft: #f8e2d8;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11181b; --surface: #182226; --ink: #e8ecea; --muted: #9aa8ac; --line: #2a373c;
+    --accent: #f0a640; --accent-soft: #3a2a14; --ledger: #6cc3c9; --ledger-soft: #16353a;
+    --ok: #6fcf94; --ok-soft: #173826; --warn: #f0875d; --warn-soft: #3d2117;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11181b; --surface: #182226; --ink: #e8ecea; --muted: #9aa8ac; --line: #2a373c;
+  --accent: #f0a640; --accent-soft: #3a2a14; --ledger: #6cc3c9; --ledger-soft: #16353a;
+  --ok: #6fcf94; --ok-soft: #173826; --warn: #f0875d; --warn-soft: #3d2117;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.45rem; font-weight: 700; }
+h3 { font-size: 1.02rem; font-weight: 700; }
+p { margin: 0; }
+.label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 0.82rem; }
+a { color: var(--ledger); }
+
+header { display: grid; gap: 12px; }
+.pitch { font-size: 1.12rem; max-width: 62ch; }
+.pitch strong { color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--mono); font-size: 0.75rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+.chip.r { border-color: var(--ledger); color: var(--ledger); }
+.chip.e { border-color: var(--accent); color: var(--accent); }
+
+/* Demo board */
+.board-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font-family: var(--body); font-weight: 600; font-size: 0.9rem; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); cursor: pointer; }
+button.ghost { background: transparent; color: var(--ink); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.panel-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.who { font-weight: 600; }
+
+/* Call transcript */
+.call-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+.live .dot { animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+.transcript { display: grid; gap: 8px; }
+.line { padding: 8px 12px; border-radius: 10px; max-width: 92%; font-size: 0.92rem; }
+.line.agent { background: var(--bg); border: 1px solid var(--line); }
+.line.user { background: var(--ink); color: var(--bg); justify-self: end; }
+.line small { display: block; font-family: var(--mono); font-size: 0.68rem; opacity: 0.7; margin-bottom: 2px; }
+
+/* Ledger feed */
+.tx { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; background: var(--bg); }
+.tx-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.tx-type { font-family: var(--mono); font-weight: 500; color: var(--ledger); }
+.pill { font-family: var(--mono); font-size: 0.68rem; padding: 2px 8px; border-radius: 999px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.pend { background: var(--accent-soft); color: var(--accent); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.tx .mono { color: var(--muted); overflow-wrap: anywhere; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cmp { border-radius: 10px; padding: 10px; display: grid; gap: 2px; }
+.cmp.old { background: var(--warn-soft); }
+.cmp.new { background: var(--ok-soft); }
+.cmp b { font-family: var(--display); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+
+/* Phone + agent */
+.sms { background: var(--ledger-soft); border-radius: 12px 12px 12px 4px; padding: 10px 12px; font-size: 0.92rem; }
+.code { font-family: var(--mono); font-size: 1.5rem; letter-spacing: 0.25em; text-align: center; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.payout { display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px; border-top: 1px solid var(--line); }
+.payout b { font-family: var(--display); font-size: 1.5rem; color: var(--ok); }
+
+.step { transition: opacity 0.35s ease, transform 0.35s ease; }
+.step.off { opacity: 0.18; transform: translateY(4px); }
+@media (prefers-reduced-motion: reduce) { .step, .live .dot { transition: none; animation: none; } }
+.example { font-size: 0.78rem; color: var(--muted); }
+
+/* Reading column */
+.col { display: grid; gap: 14px; max-width: 760px; }
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 500; }
+.tbl { overflow-x: auto; }
+.plan { display: grid; gap: 0; }
+.slot { display: grid; grid-template-columns: 7.5rem 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.slot .mono { color: var(--accent); font-weight: 500; }
+@media (max-width: 520px) { .slot { grid-template-columns: 1fr; gap: 2px; } .compare { grid-template-columns: 1fr; } }
+.qa { display: grid; gap: 12px; }
+.qa div { display: grid; gap: 3px; }
+.qa b { font-weight: 600; }
+.note { border-left: 3px solid var(--accent); padding: 10px 14px; background: var(--surface); border-radius: 0 10px 10px 0; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="label">B@BHacks 2.0 · Ripple + ElevenLabs tracks · Oct 11, 2026</span>
+  <h1>Dial-a-Dollar</h1>
+  <p class="pitch">Call a phone number, say <em>"send fifty dollars to my mom"</em> in any language, and she can pick up cash at her corner shop seconds later. Fee: <strong>a fraction of a cent</strong> instead of about 6%.</p>
+  <div class="chips">
+    <span class="chip r">XRPL Checks</span>
+    <span class="chip r">xrpl.js · testnet</span>
+    <span class="chip e">ElevenLabs voice agent</span>
+    <span class="chip">Node server tool</span>
+    <span class="chip">Twilio (optional)</span>
+  </div>
+</header>
+
+<section style="display:grid; gap:16px">
+  <div class="board-head">
+    <div style="display:grid; gap:4px">
+      <span class="label">The 2-minute demo, as the judges will see it</span>
+      <h2>One call, three screens</h2>
+    </div>
+    <div class="controls">
+      <button id="play" type="button">Replay demo</button>
+      <button id="refund" type="button" class="ghost">Show the refund path</button>
+    </div>
+  </div>
+
+  <div class="board">
+    <!-- 1. Sender's call -->
+    <div class="panel">
+      <div class="panel-top"><span class="who">Carlos · Oakland</span><span class="label">Sender</span></div>
+      <div class="call-bar" id="callbar"><span class="dot"></span><span class="mono">Calling +1 (510) 555-0142 · 0:48</span></div>
+      <div class="transcript">
+        <div class="line agent step" data-s="1"><small>AGENT · ES</small>Hola Carlos. ¿A quién le envías dinero hoy?</div>
+        <div class="line user step" data-s="1"><small>CARLOS</small>A mi mamá, cincuenta dólares.</div>
+        <div class="line agent step" data-s="2"><small>AGENT · ES</small>$50 para María López, Guadalajara. Llega en segundos, comisión menos de un centavo. Di tu PIN para confirmar.</div>
+        <div class="line user step" data-s="2"><small>CARLOS</small>Cuatro, uno, siete, nueve.</div>
+        <div class="line agent step" data-s="3"><small>AGENT · ES</small>Listo. Ya está en camino. ¿Algo más?</div>
+        <div class="line user step" data-s="6"><small>CARLOS · NEXT DAY</small>¿Mi mamá ya recibió el dinero?</div>
+        <div class="line agent step" data-s="6"><small>AGENT · READS LEDGER</small>Sí. Lo cobró hoy a las 9:14 en Abarrotes Lupita.</div>
+      </div>
+    </div>
+
+    <!-- 2. Ledger -->
+    <div class="panel">
+      <div class="panel-top"><span class="who">XRP Ledger</span><span class="label">Testnet</span></div>
+      <div class="tx step" data-s="3">
+        <div class="tx-top"><span class="tx-type">CheckCreate</span><span class="pill ok">validated · 3.8s</span></div>
+        <span>50 USD · Carlos → María · expires in 7 days</span>
+        <span class="mono">rCarlos…9fQ → rMaria…k2L</span>
+      </div>
+      <div class="tx step" data-s="5" id="cash-tx">
+        <div class="tx-top"><span class="tx-type">CheckCash</span><span class="pill ok">validated · 4.1s</span></div>
+        <span>María claims the 50 USD check</span>
+        <span class="mono">rMaria…k2L</span>
+      </div>
+      <div class="tx step" data-s="5" id="pay-tx">
+        <div class="tx-top"><span class="tx-type">Payment</span><span class="pill ok">validated · 3.6s</span></div>
+        <span>50 USD · María → shop agent, who hands over pesos</span>
+        <span class="mono">rMaria…k2L → rLupita…7cD</span>
+      </div>
+      <div class="tx step off" data-s="9" id="cancel-tx" hidden>
+        <div class="tx-top"><span class="tx-type">CheckCancel</span><span class="pill warn">refunded</span></div>
+        <span>Not cashed in 7 days: the 50 USD returns to Carlos</span>
+        <span class="mono">rCarlos…9fQ</span>
+      </div>
+      <div class="compare step" data-s="5">
+        <div class="cmp old"><span class="label">Typical wire</span><b>≈ $3.20</b><span class="example">about 6.4% of $50, 1–3 days</span></div>
+        <div class="cmp new"><span class="label">Dial-a-Dollar</span><b>$0.00001</b><span class="example">one XRPL fee, seconds</span></div>
+      </div>
+      <p class="example">Addresses and timings are example values for the mockup.</p>
+    </div>
+
+    <!-- 3. Mom + corner shop -->
+    <div class="panel">
+      <div class="panel-top"><span class="who">María · Guadalajara</span><span class="label">Receiver</span></div>
+      <div class="sms step" data-s="4" id="sms">Carlos te envió <b>$50 USD</b>. Cóbralo en cualquier tienda Dial-a-Dollar con este código. Vence en 7 días.</div>
+      <div class="code step" data-s="4" id="code">482 913</div>
+      <div class="panel-top step" data-s="5"><span class="who">Abarrotes Lupita</span><span class="label">Cash-out agent</span></div>
+      <div class="payout step" data-s="5" id="payout"><span>Hand María</span><b>$870 MXN</b></div>
+      <p class="example step" data-s="5">The shop types María's phone number and code. The app cashes the check and pays the shop on-ledger, and the shop hands over cash, the same way M-Pesa agents work.</p>
+    </div>
+  </div>
+</section>
+
+<section class="col">
+  <span class="label">How it works</span>
+  <h2>The whole system on one page</h2>
+  <div class="flow">
+<pre class="mermaid">
+flowchart TD
+  A["Carlos calls the number<br/>(phone via Twilio, or web call widget)"] --> B["ElevenLabs voice agent<br/>speaks Carlos's language"]
+  B --> C{"Confirms recipient,<br/>amount and spoken PIN"}
+  C -- "no" --> B
+  C -- "yes" --> D["Server tool: send_money()<br/>Node + xrpl.js"]
+  D --> E["CheckCreate on XRPL<br/>Carlos → María, expires 7 days"]
+  E --> F["SMS to María<br/>with a 6-digit claim code"]
+  F --> G{"María goes to a shop<br/>within 7 days?"}
+  G -- "yes" --> H["Shop app: phone + code"]
+  H --> I["CheckCash, then Payment<br/>María → shop"]
+  I --> J["Shop hands over cash"]
+  G -- "no" --> K["CheckCancel<br/>money returns to Carlos"]
+  B -. "did she get it?" .-> L["Server tool: check_status()<br/>reads the ledger"]
+</pre>
+  </div>
+</section>
+
+<section class="col">
+  <span class="label">Why it can win</span>
+  <h2>Why blockchain and voice are both necessary</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Piece</th><th>What it does</th><th>Without it</th></tr></thead>
+    <tbody>
+      <tr><td><b>XRPL Checks</b></td><td>Holds the money for María until she claims it, and lets it return to Carlos if she never does.</td><td>A bank or wire company sits in the middle and takes about 6%.</td></tr>
+      <tr><td><b>Shared ledger</b></td><td>Carlos, María and the shop all trust one record of who paid whom, across borders and without a bank between them.</td><td>Each company keeps its own database, and you have to trust it.</td></tr>
+      <tr><td><b>ElevenLabs agent</b></td><td>Lets someone with no smartphone, no app and no English send money just by talking.</td><td>The people who send money home most can't use the product at all.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Ripple's main business is cross-border payments, so this is the exact problem their track exists for. The voice agent is the whole front door, so ElevenLabs is core to it, not an add-on.</p>
+</section>
+
+<section class="col">
+  <span class="label">Stack and setup</span>
+  <h2>What you need</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Part</th><th>Use</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>ElevenLabs Conversational AI</td><td>The voice agent, with two server tools: <span class="mono">send_money</span> and <span class="mono">check_status</span></td><td>Free tier; sponsor credits likely</td></tr>
+      <tr><td>xrpl.js + XRPL testnet</td><td>CheckCreate, CheckCash, CheckCancel, Payment. Free test XRP from the faucet.</td><td>$0</td></tr>
+      <tr><td>Test "USD" token</td><td>Issue your own USD token from an issuer account (or use RLUSD if it's on testnet)</td><td>$0</td></tr>
+      <tr><td>Node server on Vercel</td><td>Public HTTPS endpoint the voice agent calls, plus the shop and receiver web pages</td><td>$0</td></tr>
+      <tr><td>Twilio number</td><td>Real phone calls and SMS. Optional: a web "call" button works for the demo.</td><td>Trial credit; about $1/mo after</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>Tonight:</b> make the ElevenLabs account, a Vercel account, and (optionally) a Twilio trial. Read the XRPL "Checks" docs page once. Write the actual code at the event, since most hackathons require that.</div>
+</section>
+
+<section class="col">
+  <span class="label">Sunday, 10am – 8pm</span>
+  <h2>10-hour build plan</h2>
+  <div class="plan">
+    <div class="slot"><span class="mono">10:00–11:00</span><span>Testnet wallets for Carlos, María and the shop. Issue the test USD token and set trust lines.</span></div>
+    <div class="slot"><span class="mono">11:00–1:00</span><span>Server: <span class="mono">send_money</span> (CheckCreate + claim code), <span class="mono">cash_out</span> (CheckCash + Payment), <span class="mono">check_status</span>. Test them without voice first.</span></div>
+    <div class="slot"><span class="mono">1:00–3:00</span><span>ElevenLabs agent: Spanish + English prompt, PIN confirmation, hooked up to the two server tools.</span></div>
+    <div class="slot"><span class="mono">3:00–5:00</span><span>Shop cash-out page and the live ledger screen with explorer links. This is the screen the judges watch.</span></div>
+    <div class="slot"><span class="mono">5:00–6:00</span><span>Refund path (CheckCancel), plus SMS via Twilio if time allows.</span></div>
+    <div class="slot"><span class="mono">6:00–7:00</span><span>Deploy, run the full demo three times, fix whatever breaks.</span></div>
+    <div class="slot"><span class="mono">7:00–8:00</span><span>Record the 2-minute video (one live call, start to finish), write the README, submit.</span></div>
+  </div>
+</section>
+
+<section class="col">
+  <span class="label">Be ready for these</span>
+  <h2>Judge questions</h2>
+  <div class="qa">
+    <div><b>"How does María turn this into pesos?"</b><span>Through local cash-out agents, the same model M-Pesa uses. In production, licensed partners would do this. For the demo, the shop is a web page.</span></div>
+    <div><b>"Who holds María's keys?"</b><span>The service holds them, tied to her phone number. That's custodial, the same as most remittance apps. A later version could let her move to her own wallet.</span></div>
+    <div><b>"What stops a stranger calling as Carlos?"</b><span>Caller ID plus a spoken PIN. Large transfers could also need a callback.</span></div>
+    <div><b>"Why not Venmo?"</b><span>Venmo doesn't cross borders. Wires take days and cost about 6%. This settles in seconds for under a cent, and nobody can freeze it in the middle.</span></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const callbar = document.getElementById('callbar');
+  const cancelTx = document.getElementById('cancel-tx');
+  const refundOnly = ['cash-tx', 'pay-tx', 'payout'];
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let timers = [];
+
+  function clear() { timers.forEach(clearTimeout); timers = []; }
+  function show(n, refund) {
+    steps.forEach(el => {
+      const s = Number(el.dataset.s);
+      let on = s <= n;
+      if (refund && (refundOnly.includes(el.id) || (s === 5 && el.closest('.panel:nth-child(3)')) || s === 6)) on = false;
+      if (el.id === 'cancel-tx') on = refund && n >= 9;
+      el.classList.toggle('off', !on);
+    });
+  }
+  function run(refund) {
+    clear();
+    cancelTx.hidden = !refund;
+    callbar.classList.add('live');
+    const seq = refund ? [0, 1, 2, 3, 4, 9] : [0, 1, 2, 3, 4, 5, 6];
+    seq.forEach((n, i) => timers.push(setTimeout(() => {
+      show(n, refund);
+      if (n >= 4) callbar.classList.remove('live');
+    }, reduce ? 0 : i * 1300)));
+  }
+  document.getElementById('play').addEventListener('click', () => run(false));
+  document.getElementById('refund').addEventListener('click', () => run(true));
+  show(6, false); // complete at rest: the finished happy path
+})();
+</script>
