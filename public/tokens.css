@@ -1,9 +1,5 @@
-/* Hallmark · tokens · theme: custom "Banknote" (studied from the approved mockup)
- * paper oklch(26% 0.042 168) note-green · accent oklch(77% 0.11 85) brass
- * display Libre Caslon Text · body Archivo · utility JetBrains Mono
- * axes: dark / high-contrast-serif / warm
- */
-@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+/* Dial design tokens: colour (OKLCH), type, spacing, shape, motion. */
+@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:wght@400;700&family=Wire+One&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
   color-scheme: dark;
@@ -31,6 +27,7 @@
 
   /* Type: 2 + 1 */
   --font-display: "Libre Caslon Text", Georgia, "Times New Roman", serif;
+  --font-hero: "Wire One", "Libre Caslon Text", Georgia, serif;
   --font-body: Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --text-xs: 0.78rem;
@@ -42,7 +39,7 @@
   --text-2xl: 2.4rem;
   --text-stat: 2.1rem;
   --text-figure: 3.2rem;
-  --text-display: clamp(2.9rem, 6.4vw, 5rem);
+  --text-display: clamp(4.2rem, 10vw, 8rem);
 
   /* Space: 4 pt scale */
   --space-3xs: 4px;

@@ -32,7 +32,7 @@ const MIN_USD = 1;
 const MAX_USD = 500;
 const DEFAULT_TTL = 7 * 24 * 3600;
 const DUPLICATE_WINDOW = 120; // seconds
-const caller = senders.varun;
+const caller = senders.demo;
 const SITE = process.env.SITE_URL || 'https://dial-a-dollar.vercel.app';
 
 // Whatever the caller calls their contact ("mom", "my friend") is used when talking back.

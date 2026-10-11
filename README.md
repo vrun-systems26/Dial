@@ -28,7 +28,7 @@ Also: **NGO payouts** (pay many families in one transaction, with a live donor r
 | Contract | `contracts/DialChecks.sol` (Solidity 0.8.24): `createCheck`, `cashCheck`, `refund`, `createChecks` (bulk) |
 | Chain | Mantle Sepolia (Ethereum L2), test stand-in for Agora's AUSD (6 decimals), ethers.js v6 |
 | Server | Node.js + Express on Vercel serverless, daily cron for the refund agent |
-| Frontend | Plain HTML/CSS/JS, mobile-first, designed to the Hallmark and Emil Kowalski design-engineering skills (OKLCH tokens in `public/tokens.css`) |
+| Frontend | Plain HTML/CSS/JS, mobile-first, OKLCH design tokens in `public/tokens.css` |
 
 **Contracts (Mantle Sepolia):** DialChecks `0x49F1760C86783a5a383E4Fe387eF438D1862BaCa` · Test AUSD `0x6E7D3e33e938A315A16dFa6c6146C6A8A1d1C974`
 
@@ -57,4 +57,3 @@ node scripts/create-agent.js http://localhost:3010   # needs a public URL for th
 
 `.env` keys: `MANTLE_RPC`, `CHAIN_ID`, `DEPLOYER_PK`, `SENDER_PK`, `SHOP_PK`, `WALLET_SEED`, `CODE_SECRET`, `TOOL_SECRET`, `SENDER_PIN`, `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, optional `TWILIO_SID` / `TWILIO_TOKEN` / `TWILIO_FROM`.
 
-Built with Claude Code.

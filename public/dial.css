@@ -1,8 +1,5 @@
-/* Hallmark · macrostructure: Workbench (one job per page, step rail) · nav: N-tab bottom bar (mobile) / step rail (desktop)
- * tone: luxury-utilitarian · anchor hue: brass 85 on note-green 168 · theme: custom "Banknote" · enrichment: none (typography only)
- * pre-emit critique: P5 H5 E5 S5 R4 V4 · contrast: pass (40–41) · motion: press-scale · enter-rise · live-ripple
- * craft: Emil Kowalski design-eng (custom ease-out, scale(.97) press, gated hover, @starting-style enters, mobile-native fixes)
- */
+/* Dial · Banknote theme: deep note-green, brass ink, engraved lines.
+ * One job per page, step rail on desktop, bottom tab bar on phones. */
 @import url("/tokens.css");
 
 /* ---------- Base ---------- */
@@ -36,7 +33,7 @@ h1, h2, h3 {
   overflow-wrap: anywhere;
   min-width: 0;
 }
-h1 { font-size: var(--text-display); letter-spacing: -0.02em; }
+h1 { font-family: var(--font-hero); font-weight: 400; font-size: var(--text-display); line-height: 0.95; letter-spacing: 0.02em; }
 h1 em, h2 em { font-style: normal; color: var(--color-accent); }
 h2 { font-size: var(--text-xl); line-height: 1.12; }
 h3 { font-size: var(--text-lg); line-height: 1.2; }
@@ -313,7 +310,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
   .page { padding: var(--space-lg) var(--space-sm) calc(120px + env(safe-area-inset-bottom, 0px)); gap: var(--space-xl); }
   .intro { justify-items: center; text-align: center; }
-  h1 { font-size: clamp(2.3rem, 10.5vw, 2.9rem); line-height: 1.06; }
+  h1 { font-size: clamp(3.4rem, 16vw, 4.4rem); line-height: 0.95; }
   h2 { font-size: 1.5rem; }
   .lede { font-size: 1.05rem; }
   .slogan { font-size: 1.25rem; }
