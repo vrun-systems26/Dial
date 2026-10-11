@@ -83,13 +83,9 @@ $('#keeper').addEventListener('click', async e => {
 config().then(async c => {
   cfg = c;
   // Label the user's own receiver number with the name they chose.
-  if (getNames().phone) {
-    const w = await api('/api/whois?phone=' + encodeURIComponent(getNames().phone));
-    if (w.ok) {
-      for (const k in cfg.names) if (cfg.names[k] === '@recipient') cfg.names[k] = 'Demo phone';
-      cfg.names[w.address] = '@recipient';
-    }
-  }
+  // Label this visitor's receiver (their saved number, or their private demo phone).
+  const w = await api('/api/whois?phone=' + encodeURIComponent(receiverPhone()));
+  if (w.ok) cfg.names[w.address] = '@recipient';
   $('#contract').href = c.checksUrl;
   $('#contract').textContent = `Contract ${short(c.contracts.checks)} ↗`;
   loadFeed();

@@ -22,6 +22,12 @@ function toolAuth(req, res, next) {
   next();
 }
 
+// Which visitor is this? Browsers send a random id; the voice agent passes it as a dynamic variable.
+const deviceOf = req => {
+  const id = req.get('x-dial-device') || req.body?.device_id || req.query.device;
+  return chain.validDevice(id) ? id : null;
+};
+
 const MIN_USD = 1;
 const MAX_USD = 500;
 const DEFAULT_TTL = 7 * 24 * 3600;
@@ -56,7 +62,7 @@ function windowWords(ttl) {
   return `${Math.round(ttl / 60)} minute${ttl === 60 ? '' : 's'}`;
 }
 
-async function sendMoney({ recipient, amount_usd, pin, recipient_phone, expiry_minutes, sender_name }) {
+async function sendMoney({ recipient, amount_usd, pin, recipient_phone, expiry_minutes, sender_name, device_id }) {
   const r = findRecipient(recipient);
   const label = labelFor(recipient, r);
   const phone = normalizePhone(recipient_phone) || r.phone;
@@ -73,8 +79,9 @@ async function sendMoney({ recipient, amount_usd, pin, recipient_phone, expiry_m
     return { ok: true, duplicate: true, message: `That transfer already went through. $${amount} is locked for ${label}. Nothing extra was sent.`, check_id: recent.id, recipient: label, amount_usd: amount, fee_usd: 0, tx_url: chain.txUrl(recent.createdTx) };
   }
 
-  const c = await chain.createCheck({ phone, amountUsd: amount, ttlSeconds: ttl });
-  const from = String(sender_name || caller.name).slice(0, 40);
+  const signer = chain.validDevice(device_id) ? await chain.ensureDevice(device_id) : chain.sender;
+  const c = await chain.createCheck({ phone, amountUsd: amount, ttlSeconds: ttl, signer });
+  const from = String(sender_name || 'Someone').slice(0, 40);
   const sms = await sendSms(phone, `${from} sent you $${amount.toFixed(2)} with Dial. Your code: ${c.code}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${receiverLink(phone, from)}`).catch(e => ({ sent: false, reason: e.message }));
   return {
     ok: true,
@@ -109,7 +116,15 @@ app.post('/api/tools/send_money', toolAuth, wrap(async (req, res) => res.json(aw
 app.post('/api/tools/check_status', toolAuth, wrap(async (req, res) => res.json(await checkStatus(req.body || {}))));
 
 // Same as the voice tool, for the on-screen backup button and testing.
-app.post('/api/send', wrap(async (req, res) => res.json(await sendMoney(req.body || {}))));
+app.post('/api/send', wrap(async (req, res) => res.json(await sendMoney({ ...(req.body || {}), device_id: deviceOf(req) }))));
+
+// A visitor's private session: sets up their own wallet on first visit.
+app.post('/api/session', wrap(async (req, res) => {
+  const id = deviceOf(req);
+  if (!id) return res.status(400).json({ ok: false, error: 'missing device id' });
+  const w = await chain.ensureDevice(id);
+  res.json({ ok: true, address: w.address });
+}));
 app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ recipient: req.query.recipient || 'Relative', recipient_phone: req.query.phone }))));
 
 // ---- Receiver side ----
@@ -156,7 +171,8 @@ app.post('/api/bulk', wrap(async (req, res) => {
   const rows = (req.body?.rows || []).map(r => ({ phone: normalizePhone(r.phone), amount: Number(r.amount) })).filter(r => r.phone && r.amount > 0);
   if (!rows.length || rows.length > 100) return res.status(400).json({ ok: false, error: 'Send between 1 and 100 rows of phone + amount.' });
   const ttl = ttlFrom(req.body.ttlMinutes || 7 * 24 * 60);
-  const out = await chain.createChecksBulk(rows, ttl);
+  const device = deviceOf(req);
+  const out = await chain.createChecksBulk(rows, ttl, device ? await chain.ensureDevice(device) : chain.deployer);
   // Each family gets their own text (when SMS is switched on).
   const org = String(req.body.org || 'Relief Fund').slice(0, 40);
   const texts = await Promise.all(rows.map((r, i) => sendSms(r.phone, `${org} sent you $${r.amount.toFixed(2)} with Dial. Your code: ${out.codes[i]}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${receiverLink(r.phone, org)}`).catch(() => ({ sent: false }))));
@@ -165,7 +181,8 @@ app.post('/api/bulk', wrap(async (req, res) => {
 
 // ---- Donor report: where every NGO dollar went ----
 app.get('/api/ngo/report', wrap(async (req, res) => {
-  const list = await chain.checksBySender(chain.deployer.address);
+  const device = deviceOf(req);
+  const list = await chain.checksBySender(device ? chain.walletForDevice(device).address : chain.deployer.address);
   const now = Math.floor(Date.now() / 1000);
   const sum = f => list.filter(f).reduce((s, c) => s + c.amountUsd, 0);
   res.json({
@@ -213,22 +230,24 @@ app.get('/api/whois', (req, res) => {
 });
 
 // ---- Demo screen data ----
-app.get('/api/feed', wrap(async (req, res) => res.json({ ok: true, items: await chain.feed() })));
-app.get('/api/balances', wrap(async (req, res) => res.json({ ok: true, ...(await chain.balances()) })));
+app.get('/api/feed', wrap(async (req, res) => {
+  const device = deviceOf(req);
+  res.json({ ok: true, items: await chain.feed(25, device ? chain.walletForDevice(device).address : undefined) });
+}));
+app.get('/api/balances', wrap(async (req, res) => {
+  const device = deviceOf(req);
+  res.json({ ok: true, ...(await chain.balances(device ? chain.walletForDevice(device).address : undefined)) });
+}));
 app.get('/api/config', (req, res) => res.json({
   agentId: process.env.ELEVENLABS_AGENT_ID || null,
   explorer: chain.EXPLORER,
   contracts: { checks: chain.deployments.checks, token: chain.deployments.token },
   checksUrl: chain.addrUrl(chain.deployments.checks),
-  sender: { name: caller.name, phone: caller.phone },
-  receiver: { name: 'Relative', city: 'Guadalajara, MX', phone: '+523312345678' },
+  receiver: { name: 'Relative' },
   shop: { id: 'lupita', ...shops.lupita },
   smsEnabled: sms.enabled(),
   names: {
-    [chain.sender.address]: '@sender',
-    [chain.walletForPhone('+523312345678').address]: '@recipient',
     [chain.shopWallet.address]: '@shop',
-    [chain.deployer.address]: 'Relief Fund',
   },
 }));
 

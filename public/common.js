@@ -4,9 +4,22 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const short = a => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '');
 const usd = n => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
+// This browser's private id. Nothing about you is shared with other visitors.
+function deviceId() {
+  let id = '';
+  try { id = localStorage.getItem('dial-device') || ''; } catch {}
+  if (!/^[a-f0-9]{32}$/.test(id)) {
+    id = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+    try { localStorage.setItem('dial-device', id); } catch {}
+  }
+  return id;
+}
+
 async function api(path, body) {
   try {
-    const res = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+    const headers = { 'x-dial-device': deviceId() };
+    if (body) headers['content-type'] = 'application/json';
+    const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
     const data = await res.json().catch(() => ({ ok: false, error: `Server error (${res.status})` }));
     if (!res.ok && data.ok !== false) data.ok = false;
     return data;
@@ -51,12 +64,32 @@ function render(sel, html) {
   $(sel).innerHTML = html;
 }
 
+// Config + this visitor's private session (their own wallet is labelled with their name).
 let configPromise;
-const config = () => (configPromise ||= api('/api/config'));
+const config = () => (configPromise ||= api('/api/config').then(c => {
+  c.names = c.names || {};
+  // Set up this visitor's private wallet in the background (first visit takes a few seconds).
+  api('/api/session', {}).then(s => { if (s.ok) { c.names[s.address] = '@sender'; c.myAddress = s.address; } });
+  return c;
+}));
 // Settings the user picks on the Call page (kept in this browser): names, the receiver's
-// phone number and how long they have to collect. Defaults: Varun → Relative, demo number, 7 days.
-const DEMO_PHONE = '+523312345678';
-const DEFAULT_NAMES = { sender: 'Varun', recipient: 'Relative', phone: '', expiry: '10080', shop: 'Corner Shop' };
+// phone number and how long they have to collect. Defaults: You → Relative, a private demo number, 7 days.
+// A private demo phone number for this browser, so its texts and codes are only yours.
+function demoPhone() {
+  let p = '';
+  try { p = localStorage.getItem('dial-demo-phone') || ''; } catch {}
+  if (!p) {
+    const n = crypto.getRandomValues(new Uint32Array(1))[0] % 100000000;
+    p = '+5233' + String(n).padStart(8, '0');
+    try { localStorage.setItem('dial-demo-phone', p); } catch {}
+  }
+  return p;
+}
+const DEMO_PHONE = demoPhone();
+const DEFAULT_NAMES = { sender: 'You', recipient: 'Relative', phone: '', expiry: '10080', shop: 'Corner Shop' };
+// What the voice agent calls you ("Hi there" until you set a name).
+const senderLabel = () => (getNames().sender && getNames().sender !== 'You' ? getNames().sender : 'Someone');
+const spokenName = () => (getNames().sender && getNames().sender !== 'You' ? getNames().sender : 'there');
 const receiverPhone = () => getNames().phone || DEMO_PHONE;
 // The receiver's private link (with its secret key) comes from the server after a PIN check.
 function receiverLinkFor(phone) {
@@ -66,7 +99,7 @@ function receiverLinkFor(phone) {
 const receiverKey = phone => { try { return new URL(receiverLinkFor(phone)).searchParams.get('k') || ''; } catch { return ''; } };
 async function refreshReceiverLink(pin) {
   const n = getNames();
-  const d = await api('/api/receiver-link', { phone: receiverPhone(), pin, from: n.sender });
+  const d = await api('/api/receiver-link', { phone: receiverPhone(), pin, from: senderLabel() });
   if (d.ok) { const u = new URL(d.link); setNames({ ...getNames(), link: location.origin + u.pathname + u.search }); }
   return d;
 }

@@ -24,7 +24,7 @@
 
   <section class="card">
     <form id="look" style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:end">
-      <label class="field"><span>Phone number</span><input class="input" id="phone" value="+523312345678"></label>
+      <label class="field"><span>Phone number</span><input class="input" id="phone" type="tel" inputmode="tel"></label>
       <button class="btn" type="submit">Show passport</button>
     </form>
   </section>
@@ -34,6 +34,7 @@
 
 <script src="/common.js"></script>
 <script>
+$('#phone').value = receiverPhone();
 const statusWord = { cashed: 'Received', open: 'Waiting', refunded: 'Returned' };
 async function load(btn) {
   const go = () => api('/api/passport?phone=' + encodeURIComponent($('#phone').value));

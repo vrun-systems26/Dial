@@ -40,6 +40,7 @@ const tools = [
           recipient_phone: { type: 'string', dynamic_variable: 'recipient_phone' },
           expiry_minutes: { type: 'number', dynamic_variable: 'expiry_minutes' },
           sender_name: { type: 'string', dynamic_variable: 'sender_name' },
+          device_id: { type: 'string', dynamic_variable: 'device_id' },
         },
       },
     },
@@ -103,7 +104,7 @@ Rules:
         first_message: 'Hi {{sender_name}}, this is Dial. How much would you like to send to {{recipient_name}} today?',
         language: 'en',
         prompt: { prompt, llm: 'gemini-2.5-flash', temperature: 0.2, tool_ids: toolIds },
-        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'Varun', recipient_name: 'Relative', recipient_phone: '+523312345678', expiry_minutes: 10080 } },
+        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'there', recipient_name: 'Relative', recipient_phone: '+523312345678', expiry_minutes: 10080, device_id: '' } },
       },
       tts: { model_id: 'eleven_flash_v2' },
       language_presets: {

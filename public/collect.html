@@ -59,7 +59,7 @@ let cfg = {};
 
 async function loadInbox() {
   const d = await api('/api/inbox?phone=' + encodeURIComponent(receiverPhone()) + '&k=' + receiverKey(receiverPhone()));
-  if (d.ok) render('#inbox', textsHtml(d.messages, getNames().sender));
+  if (d.ok) render('#inbox', textsHtml(d.messages, senderLabel()));
 }
 
 $('#cash-form').addEventListener('submit', async e => {

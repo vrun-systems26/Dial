@@ -25,7 +25,7 @@
   <section class="card names">
     <div class="split"><h2>Before you call</h2><span class="label">Saved on this phone</span></div>
     <form id="names-form" class="quad">
-      <label class="field"><span>Your name</span><input class="input" id="n-sender" autocomplete="given-name"></label>
+      <label class="field"><span>Your name</span><input class="input" id="n-sender" autocomplete="given-name" placeholder="Your first name"></label>
       <label class="field"><span>Sending to</span><input class="input" id="n-recipient" placeholder="Mom, Dad, a friend…"></label>
       <label class="field"><span>Their phone number <i class="opt">optional</i></span><input class="input" id="n-phone" type="tel" inputmode="tel" placeholder="+1 555 123 4567"></label>
       <label class="field"><span>They must collect within</span>
@@ -143,7 +143,7 @@ $('#ring').addEventListener('click', async () => {
     baselineId = c ? c.id : 0;
     convo = await Conversation.startSession({
       agentId: cfg.agentId,
-      dynamicVariables: { sender_name: getNames().sender, recipient_name: getNames().recipient, recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry) },
+      dynamicVariables: { sender_name: spokenName(), recipient_name: getNames().recipient, recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry), device_id: deviceId() },
       connectionType: 'webrtc',
       onConnect: () => setCallUi('live'),
       onDisconnect: () => { convo = null; setCallUi('idle'); $('#call-status').textContent = 'Call ended'; watchForTransfer(); },
@@ -159,7 +159,7 @@ $('#ring').addEventListener('click', async () => {
 
 $('#send-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const d = await busy(e.submitter, () => api('/api/send', { recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry), sender_name: getNames().sender, recipient: $('#s-to').value || getNames().recipient, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
+  const d = await busy(e.submitter, () => api('/api/send', { recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry), sender_name: spokenName() === 'there' ? 'Someone' : spokenName(), recipient: $('#s-to').value || getNames().recipient, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
   if (d.ok) { baselineId = d.check_id; showLocked({ amountUsd: d.amount_usd, txUrl: d.tx_url }); }
   else render('#result', errorBox(d.message || d.error));
 });
@@ -176,7 +176,7 @@ function showPhoneHint() {
     : 'No number saved, so transfers go to the demo phone on the Collect page.';
 }
 $('#ring').innerHTML = ICON.phone;
-$('#n-sender').value = getNames().sender;
+$('#n-sender').value = getNames().sender === 'You' ? '' : getNames().sender;
 $('#n-recipient').value = getNames().recipient;
 $('#n-phone').value = getNames().phone;
 $('#n-expiry').value = getNames().expiry;
