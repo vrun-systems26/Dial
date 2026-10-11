@@ -84,27 +84,29 @@
 const typeLabel = { CheckCreated: 'Transfer locked', CheckCashed: 'Collected at shop', CheckRefunded: 'Refunded' };
 const pill = { CheckCreated: ['open', 'locked'], CheckCashed: ['ok', 'cashed'], CheckRefunded: ['warn', 'refunded'] };
 let cfg = {};
+const last = {};
+function render(el, html) { if (last[el] !== html) { last[el] = html; $(el).innerHTML = html; } }
 
 async function loadFeed() {
   const d = await api('/api/feed');
   if (!d.ok) return;
-  $('#feed').innerHTML = d.items.length ? d.items.map(i => `
+  render('#feed', d.items.length ? d.items.map(i => `
     <div class="tx">
       <div class="tx-top"><span class="tx-type">${typeLabel[i.type]} · #${i.id}</span><span class="pill ${pill[i.type][0]}">${pill[i.type][1]}</span></div>
       <span>${usd(i.amountUsd)} AUSD ${i.from ? `· ${short(i.from)} → ` : '→ '}${short(i.to)}</span>
       <a class="mono" href="${i.txUrl}" target="_blank" rel="noopener">${short(i.txHash)} on Mantlescan ↗</a>
-    </div>`).join('') : '<p class="empty">No transfers yet. Make the first call.</p>';
+    </div>`).join('') : '<p class="empty">No transfers yet. Make the first call.</p>');
 }
 
 async function loadInbox() {
   const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
   if (!d.ok) return;
   const open = d.messages.filter(m => m.status === 'open');
-  $('#inbox').innerHTML = open.length ? open.map(m => `
+  render('#inbox', open.length ? open.map(m => `
     <div class="sms">
       <span>Carlos te envió <b>${usd(m.amountUsd)} USD</b>. Cóbralo en cualquier tienda Dial-a-Dollar con este código. Vence el ${new Date(m.expiresAt * 1000).toLocaleDateString('es-MX')}.</span>
       <span class="code">${m.code}</span>
-    </div>`).join('') : '<p class="empty">No texts waiting. Collected and refunded transfers disappear from here.</p>';
+    </div>`).join('') : '<p class="empty">No texts waiting. Collected and refunded transfers disappear from here.</p>');
 }
 
 function show(el, ok, html) { $(el).innerHTML = `<div class="result ${ok ? 'ok' : 'err'}">${html}</div>`; }
