@@ -217,3 +217,10 @@ html, body { overflow-x: hidden; }
 
   .next { flex-direction: column-reverse; gap: 14px; text-align: center; }
 }
+
+/* Names card + separate texts on the receiver's phone */
+.duo { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px; align-items: end; }
+.text-msg { display: grid; gap: 10px; }
+.text-msg + .text-msg { padding-top: 18px; border-top: 1px dashed var(--line); }
+.text-msg.older { opacity: .8; }
+@media (max-width: 760px) { .duo { grid-template-columns: 1fr; } .names .split { justify-content: center; } }

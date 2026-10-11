@@ -22,20 +22,35 @@ function toolAuth(req, res, next) {
 
 const MIN_USD = 1;
 const MAX_USD = 500;
-const carlos = senders.carlos;
+const TTL = 7 * 24 * 3600;
+const DUPLICATE_WINDOW = 120; // seconds
+const caller = senders.varun;
+
+// Whatever the caller calls their contact ("mom", "my friend") is used when talking back.
+const labelFor = (said, r) => (String(said || '').trim() ? String(said).trim() : r.name);
 
 async function sendMoney({ recipient, amount_usd, pin }) {
   const r = findRecipient(recipient);
-  if (!r) return { ok: false, message: `I couldn't find "${recipient}" in your contacts. Your saved contact is María López (your mom).` };
-  const amount = Number(String(amount_usd).replace(/[^0-9.]/g, ''));
-  if (!(amount >= MIN_USD && amount <= MAX_USD)) return { ok: false, message: `The amount must be between $${MIN_USD} and $${MAX_USD}.` };
-  if (String(pin).replace(/\D/g, '') !== carlos.pin) return { ok: false, message: 'That PIN is not correct. Nothing was sent.' };
-  const c = await chain.createCheck({ phone: r.phone, amountUsd: amount });
+  const label = labelFor(recipient, r);
+  const amount = Math.round(Number(String(amount_usd).replace(/[^0-9.]/g, '')) * 100) / 100;
+  if (!(amount >= MIN_USD && amount <= MAX_USD)) return { ok: false, message: `The amount must be between $${MIN_USD} and $${MAX_USD}. Nothing was sent.` };
+  if (String(pin).replace(/\D/g, '') !== caller.pin) return { ok: false, message: 'That PIN is not correct. Nothing was sent.' };
+
+  // Safety net: if the same amount was just sent to the same person (e.g. the call was
+  // interrupted and the agent retried), return that transfer instead of sending twice.
+  const now = Math.floor(Date.now() / 1000);
+  const recent = (await chain.checksForPhone(r.phone)).reverse()
+    .find(c => c.status === 'open' && c.amountUsd === amount && now - (c.expiresAt - TTL) < DUPLICATE_WINDOW);
+  if (recent) {
+    return { ok: true, duplicate: true, message: `That transfer already went through. $${amount} is locked for ${label}. Nothing extra was sent.`, check_id: recent.id, recipient: label, amount_usd: amount, fee_usd: 0, tx_url: chain.txUrl(recent.createdTx) };
+  }
+
+  const c = await chain.createCheck({ phone: r.phone, amountUsd: amount, ttlSeconds: TTL });
   return {
     ok: true,
-    message: `Sent. $${amount} is locked for ${r.name} on the Mantle blockchain. She will get a text with a 6-digit code and can collect cash at any partner shop within 7 days. If she doesn't, the money comes back to you automatically.`,
+    message: `Sent. $${amount.toFixed(2)} is locked for ${label} on the blockchain. They will get a text with a 6-digit code and can collect cash at any partner shop within 7 days. If they don't, the money comes back automatically.`,
     check_id: c.id,
-    recipient: r.name,
+    recipient: label,
     amount_usd: amount,
     fee_usd: 0,
     tx_url: c.txUrl,
@@ -43,16 +58,17 @@ async function sendMoney({ recipient, amount_usd, pin }) {
 }
 
 async function checkStatus({ recipient }) {
-  const r = findRecipient(recipient) || findRecipient('maria');
+  const r = findRecipient(recipient);
+  const label = labelFor(recipient, r);
   const list = await chain.checksForPhone(r.phone);
-  if (!list.length) return { ok: true, message: `You haven't sent anything to ${r.name} yet.` };
+  if (!list.length) return { ok: true, message: `You haven't sent anything to ${label} yet.` };
   const last = list[list.length - 1];
   const words = {
-    open: `is waiting for her to collect. It expires ${new Date(last.expiresAt * 1000).toUTCString()}.`,
-    cashed: 'has been collected. She picked it up at Abarrotes Lupita.',
+    open: `is waiting to be collected. It expires ${new Date(last.expiresAt * 1000).toUTCString()}.`,
+    cashed: 'has been collected at Abarrotes Lupita.',
     refunded: 'was never collected, so it was refunded to you.',
   };
-  return { ok: true, message: `Your latest transfer of $${last.amountUsd} to ${r.name} ${words[last.status]}`, status: last.status, check_id: last.id };
+  return { ok: true, message: `Your latest transfer of $${last.amountUsd} to ${label} ${words[last.status]}`, status: last.status, check_id: last.id };
 }
 
 // ---- Voice agent tools (called by ElevenLabs) ----
@@ -61,7 +77,7 @@ app.post('/api/tools/check_status', toolAuth, wrap(async (req, res) => res.json(
 
 // Same as the voice tool, for the on-screen backup button and testing.
 app.post('/api/send', wrap(async (req, res) => res.json(await sendMoney(req.body || {}))));
-app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ recipient: req.query.recipient || 'maria' }))));
+app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ recipient: req.query.recipient || 'Relative' }))));
 
 // ---- Receiver side ----
 // Simulated SMS inbox: in production this text is sent by SMS (e.g. Twilio).
@@ -129,12 +145,12 @@ app.get('/api/config', (req, res) => res.json({
   explorer: chain.EXPLORER,
   contracts: { checks: chain.deployments.checks, token: chain.deployments.token },
   checksUrl: chain.addrUrl(chain.deployments.checks),
-  sender: { name: carlos.name, city: carlos.city, phone: carlos.phone },
-  receiver: { name: 'María López', city: 'Guadalajara, MX', phone: '+523312345678' },
+  sender: { name: caller.name, phone: caller.phone },
+  receiver: { name: 'Relative', city: 'Guadalajara, MX', phone: '+523312345678' },
   shop: { id: 'lupita', ...shops.lupita },
   names: {
-    [chain.sender.address]: 'Carlos',
-    [chain.walletForPhone('+523312345678').address]: 'María López',
+    [chain.sender.address]: '@sender',
+    [chain.walletForPhone('+523312345678').address]: '@recipient',
     [chain.shopWallet.address]: 'Abarrotes Lupita',
     [chain.deployer.address]: 'Relief Fund',
   },

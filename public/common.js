@@ -32,7 +32,28 @@ function render(sel, html) {
 
 let configPromise;
 const config = () => (configPromise ||= api('/api/config'));
-const nameOf = (cfg, addr) => cfg.names?.[addr] || short(addr);
+// Names the user picks on the Call page (kept in this browser). Defaults: Varun → Relative.
+const DEFAULT_NAMES = { sender: 'Varun', recipient: 'Relative' };
+function getNames() {
+  try { return { ...DEFAULT_NAMES, ...JSON.parse(localStorage.getItem('dial-names') || '{}') }; } catch { return { ...DEFAULT_NAMES }; }
+}
+function setNames(n) {
+  try { localStorage.setItem('dial-names', JSON.stringify(n)); } catch {}
+  applyNames();
+}
+// Fill every element marked data-name="sender" / "recipient" with the chosen names.
+function applyNames() {
+  const n = getNames();
+  document.querySelectorAll('[data-name]').forEach(el => { el.textContent = n[el.dataset.name] || el.textContent; });
+}
+document.addEventListener('DOMContentLoaded', applyNames);
+
+const nameOf = (cfg, addr) => {
+  const v = cfg.names?.[addr];
+  if (v === '@sender') return getNames().sender;
+  if (v === '@recipient') return getNames().recipient;
+  return v || short(addr);
+};
 
 function errorBox(msg) { return `<div class="err"><b>That didn't work</b><span>${esc(msg)}</span></div>`; }
 function txLink(url, text = 'View on Mantlescan ↗') { return url ? `<a class="hash" href="${url}" target="_blank" rel="noopener">${text}</a>` : ''; }

@@ -18,8 +18,8 @@
 <main class="page">
   <section class="intro">
     <span class="eyebrow">Step 3 of 3</span>
-    <h1>María <em>collects.</em></h1>
-    <p class="lede">She gets a text with a code. At any partner shop, the shopkeeper enters it and hands her cash. No bank, no app.</p>
+    <h1><span data-name="recipient">Relative</span> <em>collects.</em></h1>
+    <p class="lede">They get a text with a code. At any partner shop, the shopkeeper enters it and hands over cash. No bank, no app.</p>
   </section>
 
   <section class="phone">
@@ -40,7 +40,7 @@
     <div id="cash-result"></div>
   </section>
 
-  <nav class="next"><a href="/ledger.html">← Ledger</a><a class="fwd" href="/passport.html">See María's income passport →</a></nav>
+  <nav class="next"><a href="/ledger.html">← Ledger</a><a class="fwd" href="/passport.html">See the income passport →</a></nav>
 </main>
 
 <script src="/common.js"></script>
@@ -51,16 +51,20 @@ async function loadInbox() {
   const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
   if (!d.ok) return;
   const open = d.messages.filter(m => m.status === 'open');
-  render('#inbox', open.length ? open.map(m => `
-    <div class="sms">Carlos te envió <b>${usd(m.amountUsd)} USD</b>. Cóbralo en cualquier tienda Dial con este código. Vence el ${new Date(m.expiresAt * 1000).toLocaleDateString('es-MX', { day: 'numeric', month: 'numeric' })}.</div>
-    <div class="code">${m.code}</div>`).join('') : '<p class="empty">No new texts. Send money from the Call page first.</p>');
+  const from = esc(getNames().sender);
+  render('#inbox', open.length ? open.map((m, i) => `
+    <div class="text-msg${i ? ' older' : ''}">
+      <span class="label">Text ${open.length - i} of ${open.length} · transfer #${m.id}</span>
+      <div class="sms">${from} te envió <b>${usd(m.amountUsd)} USD</b>. Cóbralo en cualquier tienda Dial con este código. Vence el ${new Date(m.expiresAt * 1000).toLocaleDateString('es-MX', { day: 'numeric', month: 'numeric' })}.</div>
+      <div class="code">${m.code}</div>
+    </div>`).join('') : '<p class="empty">No new texts. Send money from the Call page first.</p>');
 }
 
 $('#cash-form').addEventListener('submit', async e => {
   e.preventDefault();
   const d = await busy(e.submitter, () => api('/api/cashout', { phone: $('#c-phone').value, code: $('#c-code').value, shopId: 'lupita' }));
   render('#cash-result', d.ok
-    ? `<div class="payout"><span class="label">Hand María</span><b>${d.payoutLocal.toLocaleString()} ${d.currency}</b><span class="hash">${usd(d.amountUsd)} AUSD paid to the shop on-chain</span>${txLink(d.txUrl)}</div>`
+    ? `<div class="payout"><span class="label">Hand ${esc(getNames().recipient)}</span><b>${d.payoutLocal.toLocaleString()} ${d.currency}</b><span class="hash">${usd(d.amountUsd)} AUSD paid to the shop on-chain</span>${txLink(d.txUrl)}</div>`
     : errorBox(d.error));
   if (d.ok) $('#c-code').value = '';
   loadInbox();

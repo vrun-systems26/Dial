@@ -21,6 +21,8 @@ const tools = [
   {
     type: 'webhook',
     name: 'send_money',
+    disable_interruptions: true,
+    response_timeout_secs: 30,
     description: 'Sends money to one of the caller\'s saved contacts. Only call this after the caller has confirmed the recipient and amount AND said their 4-digit PIN. Returns a message to read back.',
     api_schema: {
       url: `${BASE}/api/tools/send_money`,
@@ -31,8 +33,8 @@ const tools = [
         description: 'Transfer details',
         required: ['recipient', 'amount_usd', 'pin'],
         properties: {
-          recipient: { type: 'string', description: 'Who to send to, as the caller said it, e.g. "mom" or "María López".' },
-          amount_usd: { type: 'number', description: 'Amount in US dollars, e.g. 50.' },
+          recipient: { type: 'string', description: 'Who to send to, as the caller said it, e.g. "mom", "my friend" or {{recipient_name}}.' },
+          amount_usd: { type: 'number', description: 'The single amount the caller confirmed, in US dollars with cents, e.g. 31.99 or 50.' },
           pin: { type: 'string', description: 'The 4-digit PIN the caller spoke, digits only, e.g. "4179".' },
         },
       },
@@ -41,6 +43,8 @@ const tools = [
   {
     type: 'webhook',
     name: 'check_status',
+    disable_interruptions: true,
+    response_timeout_secs: 30,
     description: 'Checks on the blockchain whether the caller\'s latest transfer to a contact was collected, is still waiting, or was refunded.',
     api_schema: {
       url: `${BASE}/api/tools/check_status`,
@@ -59,16 +63,16 @@ const tools = [
 ];
 
 const prompt = `You are Dial, a phone agent that helps people send money to family in other countries.
-The caller is Carlos, calling from Oakland (identified by caller ID). His saved contact is María López, his mom, in Guadalajara, Mexico.
+The caller is {{sender_name}}. Their saved contact is {{recipient_name}}, in Guadalajara, Mexico. Whatever the caller calls that person (mom, dad, a friend, a cousin, {{recipient_name}}), it is the same saved contact. Use the caller's word when you talk about them.
 
 How to handle a transfer:
-1. Find out who to send to and how much (US dollars, between $1 and $500).
-2. Read it back in one short sentence: "$50 to María López in Guadalajara. It arrives in seconds and there is no fee."
-3. Ask for his 4-digit PIN.
-4. Call send_money with the recipient, amount and PIN. Never call it without a PIN, and never guess or repeat the PIN out loud.
-5. Read back the result simply: the money is locked for her, she gets a text with a code, she can collect cash at a partner shop within 7 days, and unclaimed money comes back automatically.
+1. Find out how much to send, in US dollars, between $1 and $500. Cents are fine.
+2. If the caller says more than one amount, or changes their mind mid-sentence, do not guess. Ask: "Just to be sure, how much should I send?" and wait for one clear amount.
+3. Read it back with the exact cents: "$31.99 to your mom. It arrives in seconds with no fee. What's your PIN?"
+4. When you have the PIN, call send_money once, with the recipient, the exact amount and the PIN. Never call it without a PIN, never call it twice for the same request, and never repeat the PIN out loud.
+5. Read back the result simply: the money is locked for them, they get a text with a code, they can collect cash at a partner shop within 7 days, and unclaimed money comes back automatically. If the result says duplicate, tell the caller it already went through and nothing extra was sent.
 
-If he asks whether she received it, call check_status and tell him the answer.
+If the caller asks whether it was received, call check_status and tell them the answer.
 
 Rules:
 - This is a phone call: keep every reply to one or two short sentences.
@@ -91,13 +95,14 @@ Rules:
     name: 'Dial',
     conversation_config: {
       agent: {
-        first_message: 'Hi Carlos, this is Dial. Who would you like to send money to today?',
+        first_message: 'Hi {{sender_name}}, this is Dial. How much would you like to send to {{recipient_name}} today?',
         language: 'en',
-        prompt: { prompt, llm: 'gemini-2.5-flash', temperature: 0.3, tool_ids: toolIds },
+        prompt: { prompt, llm: 'gemini-2.5-flash', temperature: 0.2, tool_ids: toolIds },
+        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'Varun', recipient_name: 'Relative' } },
       },
       tts: { model_id: 'eleven_flash_v2' },
       language_presets: {
-        es: { overrides: { agent: { language: 'es', first_message: 'Hola Carlos, habla Dial. ¿A quién le quieres enviar dinero hoy?' } } },
+        es: { overrides: { agent: { language: 'es', first_message: 'Hola {{sender_name}}, habla Dial. ¿Cuánto le quieres enviar a {{recipient_name}} hoy?' } } },
       },
     },
     platform_settings: {
