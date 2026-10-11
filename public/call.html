@@ -23,12 +23,23 @@
   </section>
 
   <section class="card names">
-    <div class="split"><h2>Who's calling?</h2><span class="label">Saved on this phone</span></div>
-    <form id="names-form" class="duo">
+    <div class="split"><h2>Before you call</h2><span class="label">Saved on this phone</span></div>
+    <form id="names-form" class="quad">
       <label class="field"><span>Your name</span><input class="input" id="n-sender" autocomplete="given-name"></label>
       <label class="field"><span>Sending to</span><input class="input" id="n-recipient" placeholder="Mom, Dad, a friend…"></label>
-      <button class="btn ghost" type="submit">Save names</button>
+      <label class="field"><span>Their phone number <i class="opt">optional</i></span><input class="input" id="n-phone" type="tel" inputmode="tel" placeholder="+1 555 123 4567"></label>
+      <label class="field"><span>They must collect within</span>
+        <select class="input" id="n-expiry">
+          <option value="10080">7 days</option>
+          <option value="1440">1 day</option>
+          <option value="60">1 hour</option>
+          <option value="5">5 minutes</option>
+          <option value="2">2 minutes (live demo)</option>
+        </select>
+      </label>
+      <button class="btn ghost wide" type="submit">Save</button>
     </form>
+    <p class="hint" id="phone-hint"></p>
   </section>
 
   <section class="card caller">
@@ -82,7 +93,7 @@ function showLocked(c, fromVoice) {
 }
 
 async function latestCheck() {
-  const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(receiverPhone()));
   return d.ok && d.messages.length ? d.messages[0] : null;
 }
 
@@ -132,7 +143,7 @@ $('#ring').addEventListener('click', async () => {
     baselineId = c ? c.id : 0;
     convo = await Conversation.startSession({
       agentId: cfg.agentId,
-      dynamicVariables: { sender_name: getNames().sender, recipient_name: getNames().recipient },
+      dynamicVariables: { sender_name: getNames().sender, recipient_name: getNames().recipient, recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry) },
       connectionType: 'webrtc',
       onConnect: () => setCallUi('live'),
       onDisconnect: () => { convo = null; setCallUi('idle'); $('#call-status').textContent = 'Call ended'; watchForTransfer(); },
@@ -148,26 +159,40 @@ $('#ring').addEventListener('click', async () => {
 
 $('#send-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const d = await busy(e.submitter, () => api('/api/send', { recipient: $('#s-to').value || getNames().recipient, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
+  const d = await busy(e.submitter, () => api('/api/send', { recipient_phone: receiverPhone(), expiry_minutes: Number(getNames().expiry), sender_name: getNames().sender, recipient: $('#s-to').value || getNames().recipient, amount_usd: $('#s-amt').value, pin: $('#s-pin').value }));
   if (d.ok) { baselineId = d.check_id; showLocked({ amountUsd: d.amount_usd, txUrl: d.tx_url }); }
   else render('#result', errorBox(d.message || d.error));
 });
 
 $('#status-btn').addEventListener('click', async e => {
-  const d = await busy(e.currentTarget, () => api('/api/status?recipient=' + encodeURIComponent(getNames().recipient)), 'Checking the ledger…');
+  const d = await busy(e.currentTarget, () => api('/api/status?recipient=' + encodeURIComponent(getNames().recipient) + '&phone=' + encodeURIComponent(receiverPhone())), 'Checking the ledger…');
   render('#status-result', d.ok ? `<div class="result"><span class="tick">i</span><div>${esc(d.message)}</div></div>` : errorBox(d.error));
 });
 
+function showPhoneHint() {
+  const n = getNames();
+  $('#phone-hint').innerHTML = n.phone
+    ? `Their texts: <a href="${phoneLink(n.phone)}" target="_blank" rel="noopener">${esc(n.phone)} ↗</a>${cfg.smsEnabled ? ' · real SMS on' : ' · open that link on their phone'}`
+    : 'No number saved, so transfers go to the demo phone on the Collect page.';
+}
 $('#n-sender').value = getNames().sender;
 $('#n-recipient').value = getNames().recipient;
+$('#n-phone').value = getNames().phone;
+$('#n-expiry').value = getNames().expiry;
 $('#names-form').addEventListener('submit', e => {
   e.preventDefault();
-  setNames({ sender: $('#n-sender').value.trim() || DEFAULT_NAMES.sender, recipient: $('#n-recipient').value.trim() || DEFAULT_NAMES.recipient });
+  setNames({
+    sender: $('#n-sender').value.trim() || DEFAULT_NAMES.sender,
+    recipient: $('#n-recipient').value.trim() || DEFAULT_NAMES.recipient,
+    phone: $('#n-phone').value.trim(),
+    expiry: $('#n-expiry').value,
+  });
+  showPhoneHint();
   e.submitter.textContent = 'Saved ✓';
-  setTimeout(() => { e.submitter.textContent = 'Save names'; }, 1500);
+  setTimeout(() => { e.submitter.textContent = 'Save'; }, 1500);
 });
 
-config().then(c => { cfg = c; });
+config().then(c => { cfg = c; showPhoneHint(); });
 </script>
 </body>
 </html>

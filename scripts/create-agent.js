@@ -36,6 +36,10 @@ const tools = [
           recipient: { type: 'string', description: 'Who to send to, as the caller said it, e.g. "mom", "my friend" or {{recipient_name}}.' },
           amount_usd: { type: 'number', description: 'The single amount the caller confirmed, in US dollars with cents, e.g. 31.99 or 50.' },
           pin: { type: 'string', description: 'The 4-digit PIN the caller spoke, digits only, e.g. "4179".' },
+          // Filled automatically from the caller's saved settings on the site.
+          recipient_phone: { type: 'string', dynamic_variable: 'recipient_phone' },
+          expiry_minutes: { type: 'number', dynamic_variable: 'expiry_minutes' },
+          sender_name: { type: 'string', dynamic_variable: 'sender_name' },
         },
       },
     },
@@ -56,6 +60,7 @@ const tools = [
         required: ['recipient'],
         properties: {
           recipient: { type: 'string', description: 'The contact, e.g. "mom".' },
+          recipient_phone: { type: 'string', dynamic_variable: 'recipient_phone' },
         },
       },
     },
@@ -70,7 +75,7 @@ How to handle a transfer:
 2. If the caller says more than one amount, or changes their mind mid-sentence, do not guess. Ask: "Just to be sure, how much should I send?" and wait for one clear amount.
 3. Read it back with the exact cents: "$31.99 to your mom. It arrives in seconds with no fee. What's your PIN?"
 4. When you have the PIN, call send_money once, with the recipient, the exact amount and the PIN. Never call it without a PIN, never call it twice for the same request, and never repeat the PIN out loud.
-5. Read back the result simply: the money is locked for them, they get a text with a code, they can collect cash at a partner shop within 7 days, and unclaimed money comes back automatically. If the result says duplicate, tell the caller it already went through and nothing extra was sent.
+5. Read back the result simply: the money is locked for them, they get a text with a code, they can collect cash at a partner shop within the time the result says, and unclaimed money comes back automatically. If the result says duplicate, tell the caller it already went through and nothing extra was sent.
 
 If the caller asks whether it was received, call check_status and tell them the answer.
 
@@ -98,7 +103,7 @@ Rules:
         first_message: 'Hi {{sender_name}}, this is Dial. How much would you like to send to {{recipient_name}} today?',
         language: 'en',
         prompt: { prompt, llm: 'gemini-2.5-flash', temperature: 0.2, tool_ids: toolIds },
-        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'Varun', recipient_name: 'Relative' } },
+        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'Varun', recipient_name: 'Relative', recipient_phone: '+523312345678', expiry_minutes: 10080 } },
       },
       tts: { model_id: 'eleven_flash_v2' },
       language_presets: {

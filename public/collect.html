@@ -24,16 +24,26 @@
 
   <section class="phone">
     <span class="notch"></span>
-    <span class="label" style="text-align:center">Messages · Dial</span>
+    <span class="label" style="text-align:center">Messages · <span id="ph-num">Dial</span></span>
     <div id="inbox" style="display:grid;gap:16px"><p class="empty">Checking for texts…</p></div>
+  </section>
+
+  <section class="card share">
+    <div class="qr" id="qr" aria-label="QR code for the receiver's phone page"></div>
+    <div style="display:grid;gap:8px">
+      <h2>Open it on a real phone</h2>
+      <p class="lede" style="font-size:1rem">Scan with any phone to become <span data-name="recipient">Relative</span>'s phone. The texts and codes show up there live.</p>
+      <a class="hash" id="ph-link" target="_blank" rel="noopener">phone link ↗</a>
+    </div>
   </section>
 
   <div class="divider">at the shop</div>
 
   <section class="card">
-    <div class="split"><h2>Abarrotes Lupita</h2><span class="label">Cash-out shop</span></div>
+    <div class="split"><h2 data-name="shop">Corner Shop</h2><span class="label">Cash-out shop</span></div>
+    <label class="field"><span>Shop name</span><input class="input" id="shop-name"></label>
     <form id="cash-form" style="display:grid;gap:18px">
-      <label class="field"><span>Customer's phone</span><input class="input" id="c-phone" value="+523312345678"></label>
+      <label class="field"><span>Customer's phone</span><input class="input" id="c-phone" type="tel" inputmode="tel"></label>
       <label class="field"><span>6-digit code</span><input class="input" id="c-code" inputmode="numeric" maxlength="7" placeholder="Ask the customer for their code" autocomplete="off"></label>
       <button class="btn" type="submit">Pay out cash</button>
     </form>
@@ -43,21 +53,14 @@
   <nav class="next"><a href="/ledger.html">← Ledger</a><a class="fwd" href="/passport.html">See the income passport →</a></nav>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/common.js"></script>
 <script>
 let cfg = {};
 
 async function loadInbox() {
-  const d = await api('/api/inbox?phone=' + encodeURIComponent(cfg.receiver.phone));
-  if (!d.ok) return;
-  const open = d.messages.filter(m => m.status === 'open');
-  const from = esc(getNames().sender);
-  render('#inbox', open.length ? open.map((m, i) => `
-    <div class="text-msg${i ? ' older' : ''}">
-      <span class="label">Text ${open.length - i} of ${open.length} · transfer #${m.id}</span>
-      <div class="sms">${from} te envió <b>${usd(m.amountUsd)} USD</b>. Cóbralo en cualquier tienda Dial con este código. Vence el ${new Date(m.expiresAt * 1000).toLocaleDateString('es-MX', { day: 'numeric', month: 'numeric' })}.</div>
-      <div class="code">${m.code}</div>
-    </div>`).join('') : '<p class="empty">No new texts. Send money from the Call page first.</p>');
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(receiverPhone()));
+  if (d.ok) render('#inbox', textsHtml(d.messages, getNames().sender));
 }
 
 $('#cash-form').addEventListener('submit', async e => {
@@ -69,6 +72,15 @@ $('#cash-form').addEventListener('submit', async e => {
   if (d.ok) $('#c-code').value = '';
   loadInbox();
 });
+
+$('#shop-name').value = getNames().shop;
+$('#shop-name').addEventListener('change', () => setNames({ ...getNames(), shop: $('#shop-name').value.trim() || DEFAULT_NAMES.shop }));
+const phone = receiverPhone();
+$('#c-phone').value = phone;
+$('#ph-num').textContent = phone;
+$('#ph-link').href = phoneLink(phone);
+$('#ph-link').textContent = phoneLink(phone).replace(/^https?:\/\//, '') + ' ↗';
+new QRCode($('#qr'), { text: phoneLink(phone), width: 148, height: 148, colorDark: '#0c2a22', colorLight: '#efe8d2' });
 
 config().then(c => {
   cfg = c;

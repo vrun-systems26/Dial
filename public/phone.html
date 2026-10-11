@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c2a22">
+<title>Dial · Your texts</title>
+<link rel="stylesheet" href="/dial.css">
+<style>
+  .page.phone-page { max-width: 520px; padding-bottom: 60px; }
+  .how { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  .how li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; color: var(--muted); }
+  .how li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-family: var(--mono); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="band"></div>
+<header class="topbar" style="grid-template-columns:1fr;justify-items:center">
+  <a class="logo" href="/">Dial<span>.</span></a>
+</header>
+
+<main class="page phone-page">
+  <section class="intro">
+    <span class="eyebrow" id="num">Your texts</span>
+    <h1>Money is <em>waiting for you.</em></h1>
+    <p class="lede">Show the code below at any Dial partner shop and they'll hand you cash. No bank account or app needed.</p>
+  </section>
+
+  <section class="card" style="gap:18px">
+    <div id="inbox" style="display:grid;gap:16px"><p class="empty">Checking for texts…</p></div>
+  </section>
+
+  <section class="card">
+    <h2>How to collect</h2>
+    <ol class="how">
+      <li>Go to any Dial partner shop near you.</li>
+      <li>Tell them your phone number and read them your 6-digit code.</li>
+      <li>They pay you in cash. The transfer is settled on the blockchain instantly.</li>
+    </ol>
+  </section>
+</main>
+
+<script src="/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const phone = params.get('n') || DEMO_PHONE;
+const from = params.get('from') || 'Someone';
+$('#num').textContent = 'Texts for ' + phone;
+
+async function load() {
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(phone));
+  render('#inbox', d.ok ? textsHtml(d.messages, from) : errorBox(d.error));
+}
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>

@@ -22,6 +22,11 @@
     <p class="lede">Each family gets a text with a cash-out code. No bank account or smartphone needed. Anything not collected returns to your organization automatically, and every dollar is visible on-chain.</p>
   </section>
 
+  <section class="card" id="report">
+    <div class="split"><h2>Donor report</h2><a class="hash" id="r-contract" target="_blank" rel="noopener">Verify on Mantlescan ↗</a></div>
+    <p class="empty">Loading every payout from the blockchain…</p>
+  </section>
+
   <section class="card">
     <div class="split"><h2>New payout</h2><span class="label">Relief Fund balance · <span id="bal">…</span> AUSD</span></div>
     <form id="bulk" style="display:grid;gap:18px">
@@ -35,7 +40,17 @@
 +50937110007, 60
 +50937110008, 40</textarea>
       </label>
-      <label class="field"><span>Families must collect within (minutes)</span><input class="input" id="ttl" value="10080" inputmode="numeric"></label>
+      <div class="quad">
+        <label class="field"><span>Organization name</span><input class="input" id="org" value="Relief Fund"></label>
+        <label class="field"><span>Families must collect within</span>
+          <select class="input" id="ttl">
+            <option value="10080">7 days</option>
+            <option value="1440">1 day</option>
+            <option value="60">1 hour</option>
+            <option value="2">2 minutes (live demo)</option>
+          </select>
+        </label>
+      </div>
       <button class="btn" type="submit">Send all payouts</button>
     </form>
   </section>
@@ -52,7 +67,7 @@ async function loadBal() {
 $('#bulk').addEventListener('submit', async e => {
   e.preventDefault();
   const rows = $('#rows').value.split('\n').map(l => l.split(',').map(s => s.trim())).filter(r => r[0]).map(([phone, amount]) => ({ phone, amount: Number(amount) }));
-  const d = await busy(e.submitter, () => api('/api/bulk', { rows, ttlMinutes: Number($('#ttl').value) }));
+  const d = await busy(e.submitter, () => api('/api/bulk', { rows, ttlMinutes: Number($('#ttl').value), org: $('#org').value }));
   if (!d.ok) return render('#out', errorBox(d.error));
   render('#out', `
     <div class="card">
@@ -60,17 +75,40 @@ $('#bulk').addEventListener('submit', async e => {
         <div><span class="label">Families</span><b>${d.count}</b></div>
         <div><span class="label">Total</span><b>${usd(d.totalUsd)}</b></div>
         <div><span class="label">Transactions</span><b>1</b></div>
-        <div><span class="label">Fees</span><b>$0</b></div>
+        <div><span class="label">Texts sent</span><b>${d.textsSent || 0}</b></div>
       </section>
       ${txLink(d.txUrl, 'View the single transaction on Mantlescan ↗')}
       <div class="tbl"><table>
-        <thead><tr><th>Check</th><th>Phone</th><th class="num">Amount</th><th class="num">Code (sent by text)</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr><td class="hash">#${d.ids[i]}</td><td>${esc(r.phone)}</td><td class="num">${usd(r.amount)}</td><td class="num hash">${d.codes[i]}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Check</th><th>Family's phone</th><th class="num">Amount</th><th class="num">Code</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr><td class="hash">#${d.ids[i]}</td><td><a class="hash" target="_blank" rel="noopener" href="/phone.html?n=${encodeURIComponent(d.phones[i])}&from=${encodeURIComponent($('#org').value)}">${esc(d.phones[i])} ↗</a></td><td class="num">${usd(r.amount)}</td><td class="num hash">${d.codes[i]}</td></tr>`).join('')}</tbody>
       </table></div>
     </div>`);
   loadBal();
+  loadReport();
 });
+
+async function loadReport() {
+  const r = await api('/api/ngo/report');
+  if (!r.ok) return;
+  $('#r-contract').href = r.contractUrl;
+  const pct = v => r.sentUsd ? Math.round((v / r.sentUsd) * 100) : 0;
+  const bar = (label, v, color) => `<div class="bar"><div class="split" style="justify-content:space-between"><span>${label}</span><b>${usd(v)} · ${pct(v)}%</b></div><div class="track"><span style="width:${pct(v)}%;background:${color}"></span></div></div>`;
+  render('#report', `
+    <div class="split"><h2>Donor report</h2><a class="hash" href="${r.contractUrl}" target="_blank" rel="noopener">Verify on Mantlescan ↗</a></div>
+    <section class="stats" style="border-top:0">
+      <div><span class="label">Families paid</span><b>${r.families}</b></div>
+      <div><span class="label">Sent</span><b>${usd(r.sentUsd)}</b></div>
+      <div><span class="label">In families' hands</span><b>${usd(r.collectedUsd)}</b></div>
+      <div><span class="label">Lost or stolen</span><b>$0</b></div>
+    </section>
+    ${bar('Collected as cash', r.collectedUsd, 'var(--ok)')}
+    ${bar('Waiting to be collected', r.waitingUsd + r.expiredUsd, 'var(--accent)')}
+    ${bar('Returned to the fund automatically', r.returnedUsd, 'var(--muted)')}
+    <p class="hint">Every dollar is either with a family, still claimable, or back in the fund. Anyone can check this on the public ledger.</p>`);
+}
 loadBal();
+loadReport();
+setInterval(loadReport, 10000);
 </script>
 </body>
 </html>

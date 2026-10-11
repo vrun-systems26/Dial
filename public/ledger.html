@@ -33,7 +33,7 @@
   </section>
 
   <section class="card">
-    <div class="split"><div><h2>Refund agent</h2><p class="lede" style="font-size:1rem;margin-top:6px">Runs every day on its own. Any transfer nobody collected in time goes back to the sender.</p></div></div>
+    <div class="split"><div><h2>Refund agent</h2><p class="lede" style="font-size:1rem;margin-top:6px">Watches every transfer. The moment one runs out of time uncollected, it sends the money back to the sender, no human needed.</p></div></div>
     <button class="btn ghost" id="keeper" type="button">Run it now</button>
     <div id="keeper-result"></div>
   </section>
@@ -45,18 +45,33 @@
 <script>
 let cfg = {};
 const kinds = {
-  CheckCreated: { dot: 'var(--accent)', title: i => `Locked for ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · expires ${new Date(i.expiresAt * 1000).toLocaleDateString()}` },
+  CheckCreated: { dot: 'var(--accent)', title: i => `Locked for ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)}` },
   CheckCashed: { dot: 'var(--ok)', title: i => `Collected at ${nameOf(cfg, i.to)}`, line: i => `${nameOf(cfg, i.from)} → ${nameOf(cfg, i.to)} · paid out in cash` },
   CheckRefunded: { dot: 'var(--muted)', title: i => `Refunded to ${nameOf(cfg, i.to)}`, line: () => 'Not collected in time · returned automatically' },
 };
 
+let lastAutoRefund = 0;
 async function loadFeed() {
   const d = await api('/api/feed');
   if (!d.ok) return render('#feed', errorBox(d.error));
+  const settled = new Set(d.items.filter(i => i.type !== 'CheckCreated').map(i => i.id));
+  const now = Math.floor(Date.now() / 1000);
   render('#feed', d.items.length ? d.items.map(i => {
     const k = kinds[i.type];
-    return `<div class="ev"><span class="dot" style="background:${k.dot}"></span><div><h3>${esc(k.title(i))}</h3><p>${esc(k.line(i))}</p>${txLink(i.txUrl, `#${i.id} · ${short(i.txHash)} ↗`)}</div><span class="amt">${usd(i.amountUsd)}</span></div>`;
+    const open = i.type === 'CheckCreated' && !settled.has(i.id);
+    const clock = open ? `<span class="countdown" data-exp="${i.expiresAt}">${untilWords(i.expiresAt)}</span>` : '';
+    return `<div class="ev"><span class="dot" style="background:${k.dot}"></span><div><h3>${esc(k.title(i))}</h3><p>${esc(k.line(i))} ${clock}</p>${txLink(i.txUrl, `#${i.id} · ${short(i.txHash)} ↗`)}</div><span class="amt">${usd(i.amountUsd)}</span></div>`;
   }).join('') : '<p class="empty">No transfers yet. Make the first call.</p>');
+
+  // The refund agent: as soon as an uncollected transfer runs out of time, send it back.
+  const expired = d.items.filter(i => i.type === 'CheckCreated' && !settled.has(i.id) && i.expiresAt <= now);
+  if (expired.length && Date.now() - lastAutoRefund > 20000) {
+    lastAutoRefund = Date.now();
+    render('#keeper-result', `<div class="result"><span class="tick">↺</span><div>${expired.length} transfer${expired.length > 1 ? 's' : ''} ran out of time. The refund agent is sending the money back…</div></div>`);
+    const r = await api('/api/keeper', {});
+    if (r.ok && r.refunded.length) render('#keeper-result', `<div class="result"><span class="tick">✓</span><div>Refund agent returned ${usd(r.refunded.reduce((s, x) => s + x.amountUsd, 0))} to the sender. ${txLink(r.refunded[0].txUrl, 'View ↗')}</div></div>`);
+    loadFeed();
+  }
 }
 
 $('#keeper').addEventListener('click', async e => {
@@ -65,8 +80,16 @@ $('#keeper').addEventListener('click', async e => {
   loadFeed();
 });
 
-config().then(c => {
+config().then(async c => {
   cfg = c;
+  // Label the user's own receiver number with the name they chose.
+  if (getNames().phone) {
+    const w = await api('/api/whois?phone=' + encodeURIComponent(getNames().phone));
+    if (w.ok) {
+      for (const k in cfg.names) if (cfg.names[k] === '@recipient') cfg.names[k] = 'Demo phone';
+      cfg.names[w.address] = '@recipient';
+    }
+  }
   $('#contract').href = c.checksUrl;
   $('#contract').textContent = `Contract ${short(c.contracts.checks)} ↗`;
   loadFeed();

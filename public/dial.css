@@ -224,3 +224,26 @@ html, body { overflow-x: hidden; }
 .text-msg + .text-msg { padding-top: 18px; border-top: 1px dashed var(--line); }
 .text-msg.older { opacity: .8; }
 @media (max-width: 760px) { .duo { grid-template-columns: 1fr; } .names .split { justify-content: center; } }
+
+/* Settings card */
+.quad { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.quad .wide { grid-column: 1 / -1; }
+select.input { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%), linear-gradient(135deg, var(--accent) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px; background-repeat: no-repeat; font-family: var(--body); }
+.opt { font-style: normal; font-weight: 400; opacity: .7; }
+.hint { margin: 0; color: var(--muted); font-size: .95rem; text-align: center; }
+.hint a { color: var(--accent); }
+.countdown { font-family: var(--mono); font-size: .85rem; color: var(--accent); }
+.countdown.late { color: var(--warn); }
+@media (max-width: 760px) { .quad { grid-template-columns: 1fr; } }
+
+/* "Open it on a real phone" card */
+.share { grid-template-columns: auto 1fr; align-items: center; gap: 24px; }
+.qr { background: #efe8d2; padding: 10px; border-radius: 6px; line-height: 0; }
+.qr img, .qr canvas { display: block; }
+@media (max-width: 760px) { .share { grid-template-columns: 1fr; justify-items: center; text-align: center; } }
+
+/* Donor report bars */
+.bar { display: grid; gap: 8px; }
+.bar b { font-family: var(--mono); font-weight: 500; font-size: .9rem; }
+.track { height: 12px; border-radius: 99px; background: var(--soft); border: 1px solid var(--line); overflow: hidden; }
+.track span { display: block; height: 100%; border-radius: 99px; transition: width .6s ease; }
