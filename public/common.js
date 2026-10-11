@@ -37,7 +37,18 @@ const config = () => (configPromise ||= api('/api/config'));
 const DEMO_PHONE = '+523312345678';
 const DEFAULT_NAMES = { sender: 'Varun', recipient: 'Relative', phone: '', expiry: '10080', shop: 'Corner Shop' };
 const receiverPhone = () => getNames().phone || DEMO_PHONE;
-const phoneLink = phone => `${location.origin}/phone.html?n=${encodeURIComponent(phone)}&from=${encodeURIComponent(getNames().sender)}`;
+// The receiver's private link (with its secret key) comes from the server after a PIN check.
+function receiverLinkFor(phone) {
+  const link = getNames().link || '';
+  try { const u = new URL(link); return u.searchParams.get('n') === phone ? link : ''; } catch { return ''; }
+}
+const receiverKey = phone => { try { return new URL(receiverLinkFor(phone)).searchParams.get('k') || ''; } catch { return ''; } };
+async function refreshReceiverLink(pin) {
+  const n = getNames();
+  const d = await api('/api/receiver-link', { phone: receiverPhone(), pin, from: n.sender });
+  if (d.ok) { const u = new URL(d.link); setNames({ ...getNames(), link: location.origin + u.pathname + u.search }); }
+  return d;
+}
 function untilWords(ts) {
   const s = ts - Math.floor(Date.now() / 1000);
   if (s <= 0) return 'expired';
@@ -75,6 +86,7 @@ function txLink(url, text = 'View on Mantlescan ↗') { return url ? `<a class="
 function textsHtml(messages, from) {
   const open = messages.filter(m => m.status === 'open' && m.expiresAt > Date.now() / 1000);
   if (!open.length) return '<p class="empty">No new texts. When money is sent to this number, the code shows up here.</p>';
+  if (open.some(m => !m.code)) return `<p class="empty">${open.length} transfer${open.length > 1 ? 's are' : ' is'} waiting for this number. Open the private link from the text message to see the code.</p>`;
   return open.map((m, i) => `
     <div class="text-msg${i ? ' older' : ''}">
       <div class="split" style="justify-content:space-between"><span class="label">Transfer #${m.id}</span><span class="countdown" data-exp="${m.expiresAt}">${untilWords(m.expiresAt)}</span></div>

@@ -172,14 +172,14 @@ $('#status-btn').addEventListener('click', async e => {
 function showPhoneHint() {
   const n = getNames();
   $('#phone-hint').innerHTML = n.phone
-    ? `Their texts: <a href="${phoneLink(n.phone)}" target="_blank" rel="noopener">${esc(n.phone)} ↗</a>${cfg.smsEnabled ? ' · real SMS on' : ' · open that link on their phone'}`
+    ? (receiverLinkFor(receiverPhone()) ? `Their private link: <a href="${receiverLinkFor(receiverPhone())}" target="_blank" rel="noopener">${esc(n.phone)} ↗</a>${cfg.smsEnabled ? ' · sent by real SMS too' : ''}` : 'Saving creates their private link.')
     : 'No number saved, so transfers go to the demo phone on the Collect page.';
 }
 $('#n-sender').value = getNames().sender;
 $('#n-recipient').value = getNames().recipient;
 $('#n-phone').value = getNames().phone;
 $('#n-expiry').value = getNames().expiry;
-$('#names-form').addEventListener('submit', e => {
+$('#names-form').addEventListener('submit', async e => {
   e.preventDefault();
   setNames({
     sender: $('#n-sender').value.trim() || DEFAULT_NAMES.sender,
@@ -187,12 +187,17 @@ $('#names-form').addEventListener('submit', e => {
     phone: $('#n-phone').value.trim(),
     expiry: $('#n-expiry').value,
   });
+  await refreshReceiverLink($('#s-pin').value);
   showPhoneHint();
   e.submitter.textContent = 'Saved ✓';
   setTimeout(() => { e.submitter.textContent = 'Save'; }, 1500);
 });
 
-config().then(c => { cfg = c; showPhoneHint(); });
+config().then(async c => {
+  cfg = c;
+  if (!receiverLinkFor(receiverPhone())) await refreshReceiverLink($('#s-pin').value);
+  showPhoneHint();
+});
 </script>
 </body>
 </html>

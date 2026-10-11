@@ -59,7 +59,7 @@
 let cfg = {};
 
 async function loadInbox() {
-  const d = await api('/api/inbox?phone=' + encodeURIComponent(receiverPhone()));
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(receiverPhone()) + '&k=' + receiverKey(receiverPhone()));
   if (d.ok) render('#inbox', textsHtml(d.messages, getNames().sender));
 }
 
@@ -78,9 +78,16 @@ $('#shop-name').addEventListener('change', () => setNames({ ...getNames(), shop:
 const phone = receiverPhone();
 $('#c-phone').value = phone;
 $('#ph-num').textContent = phone;
-$('#ph-link').href = phoneLink(phone);
-$('#ph-link').textContent = phoneLink(phone).replace(/^https?:\/\//, '') + ' ↗';
-new QRCode($('#qr'), { text: phoneLink(phone), width: 148, height: 148, colorDark: '#0c2a22', colorLight: '#efe8d2' });
+const link = receiverLinkFor(phone);
+if (link) {
+  $('#ph-link').href = link;
+  $('#ph-link').textContent = 'Their private link ↗';
+  new QRCode($('#qr'), { text: link, width: 148, height: 148, colorDark: '#0c2a22', colorLight: '#efe8d2' });
+} else {
+  $('#ph-link').href = '/call.html';
+  $('#ph-link').textContent = 'Open the Call page once to create their private link →';
+  $('#ph-link').removeAttribute('target');
+}
 
 config().then(c => {
   cfg = c;

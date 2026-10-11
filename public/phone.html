@@ -48,7 +48,7 @@ const from = params.get('from') || 'Someone';
 $('#num').textContent = 'Texts for ' + phone;
 
 async function load() {
-  const d = await api('/api/inbox?phone=' + encodeURIComponent(phone));
+  const d = await api('/api/inbox?phone=' + encodeURIComponent(phone) + '&k=' + encodeURIComponent(params.get('k') || ''));
   render('#inbox', d.ok ? textsHtml(d.messages, from) : errorBox(d.error));
 }
 load();

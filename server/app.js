@@ -41,6 +41,9 @@ function normalizePhone(p) {
   return digits.length >= 8 && digits.length <= 15 ? '+' + digits : null;
 }
 
+// The receiver's private link: their texts and codes, protected by a secret key.
+const receiverLink = (phone, from) => `${SITE}/phone.html?n=${encodeURIComponent(phone)}&k=${chain.linkKey(phone)}&from=${encodeURIComponent(from)}`;
+
 // How long the receiver has to collect: 15 seconds (for live demos) up to 30 days.
 function ttlFrom(minutes) {
   const m = Number(minutes);
@@ -72,7 +75,7 @@ async function sendMoney({ recipient, amount_usd, pin, recipient_phone, expiry_m
 
   const c = await chain.createCheck({ phone, amountUsd: amount, ttlSeconds: ttl });
   const from = String(sender_name || caller.name).slice(0, 40);
-  const sms = await sendSms(phone, `${from} sent you $${amount.toFixed(2)} with Dial. Your code: ${c.code}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${SITE}/phone.html?n=${encodeURIComponent(phone)}&from=${encodeURIComponent(from)}`).catch(e => ({ sent: false, reason: e.message }));
+  const sms = await sendSms(phone, `${from} sent you $${amount.toFixed(2)} with Dial. Your code: ${c.code}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${receiverLink(phone, from)}`).catch(e => ({ sent: false, reason: e.message }));
   return {
     ok: true,
     message: `Sent. $${amount.toFixed(2)} is locked for ${label} on the blockchain. ${sms.sent ? 'A text with their 6-digit code is on its way.' : 'They get a 6-digit code.'} They can collect cash at any partner shop within ${windowWords(ttl)}. If they don't, the money comes back automatically.`,
@@ -81,6 +84,7 @@ async function sendMoney({ recipient, amount_usd, pin, recipient_phone, expiry_m
     amount_usd: amount,
     fee_usd: 0,
     collect_within: windowWords(ttl),
+    receiver_link: receiverLink(phone, from),
     text_sent: sms.sent,
     tx_url: c.txUrl,
   };
@@ -113,16 +117,17 @@ app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ rec
 app.get('/api/inbox', wrap(async (req, res) => {
   const phone = normalizePhone(req.query.phone);
   if (!phone) return res.status(400).json({ ok: false, error: 'Enter a phone number with country code, like +1 555 123 4567.' });
+  const unlocked = chain.linkKeyOk(phone, req.query.k);
   const list = await chain.checksForPhone(phone);
   const messages = list.map(c => ({
     id: c.id,
     amountUsd: c.amountUsd,
     status: c.status,
     expiresAt: c.expiresAt,
-    code: c.status === 'open' ? chain.codeFor(c.ref) : null,
+    code: c.status === 'open' && unlocked ? chain.codeFor(c.ref) : null,
     txUrl: chain.txUrl(c.createdTx),
   }));
-  res.json({ ok: true, phone, messages: messages.reverse() });
+  res.json({ ok: true, phone, unlocked, messages: messages.reverse() });
 }));
 
 // Shop cash-out. Simple per-phone attempt limit so codes can't be guessed.
@@ -147,14 +152,15 @@ app.all('/api/keeper', wrap(async (req, res) => res.json({ ok: true, refunded: a
 
 // ---- NGO bulk payouts ----
 app.post('/api/bulk', wrap(async (req, res) => {
+  if (String(req.body?.pin || '').replace(/\D/g, '') !== caller.pin) return res.status(401).json({ ok: false, error: 'Enter the organization PIN to send payouts.' });
   const rows = (req.body?.rows || []).map(r => ({ phone: normalizePhone(r.phone), amount: Number(r.amount) })).filter(r => r.phone && r.amount > 0);
   if (!rows.length || rows.length > 100) return res.status(400).json({ ok: false, error: 'Send between 1 and 100 rows of phone + amount.' });
   const ttl = ttlFrom(req.body.ttlMinutes || 7 * 24 * 60);
   const out = await chain.createChecksBulk(rows, ttl);
   // Each family gets their own text (when SMS is switched on).
   const org = String(req.body.org || 'Relief Fund').slice(0, 40);
-  const texts = await Promise.all(rows.map((r, i) => sendSms(r.phone, `${org} sent you $${r.amount.toFixed(2)} with Dial. Your code: ${out.codes[i]}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${SITE}/phone.html?n=${encodeURIComponent(r.phone)}&from=${encodeURIComponent(org)}`).catch(() => ({ sent: false }))));
-  res.json({ ok: true, ...out, phones: rows.map(r => r.phone), count: rows.length, totalUsd: rows.reduce((s, r) => s + r.amount, 0), textsSent: texts.filter(t => t.sent).length });
+  const texts = await Promise.all(rows.map((r, i) => sendSms(r.phone, `${org} sent you $${r.amount.toFixed(2)} with Dial. Your code: ${out.codes[i]}. Collect cash at any Dial shop within ${windowWords(ttl)}. ${receiverLink(r.phone, org)}`).catch(() => ({ sent: false }))));
+  res.json({ ok: true, ...out, phones: rows.map(r => r.phone), links: rows.map(r => receiverLink(r.phone, org)), count: rows.length, totalUsd: rows.reduce((s, r) => s + r.amount, 0), textsSent: texts.filter(t => t.sent).length });
 }));
 
 // ---- Donor report: where every NGO dollar went ----
@@ -191,6 +197,13 @@ app.get('/api/passport', wrap(async (req, res) => {
     totalUsd: received.reduce((s, c) => s + c.amountUsd, 0),
     items: list.map(c => ({ id: c.id, amountUsd: c.amountUsd, status: c.status, txUrl: chain.txUrl(c.createdTx) })),
   });
+}));
+
+// The sender (who knows the PIN) can get the receiver's private link to share.
+app.post('/api/receiver-link', wrap(async (req, res) => {
+  const phone = normalizePhone(req.body?.phone) || findRecipient().phone;
+  if (String(req.body?.pin || '').replace(/\D/g, '') !== caller.pin) return res.status(401).json({ ok: false, error: 'Wrong PIN.' });
+  res.json({ ok: true, phone, link: receiverLink(phone, String(req.body?.from || caller.name).slice(0, 40)) });
 }));
 
 // Which wallet belongs to a phone number (so the ledger can show the user's chosen name).

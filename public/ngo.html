@@ -42,6 +42,7 @@
       </label>
       <div class="quad">
         <label class="field"><span>Organization name</span><input class="input" id="org" value="Relief Fund"></label>
+        <label class="field"><span>Organization PIN</span><input class="input" id="org-pin" value="4179" inputmode="numeric"></label>
         <label class="field"><span>Families must collect within</span>
           <select class="input" id="ttl">
             <option value="10080">7 days</option>
@@ -67,7 +68,7 @@ async function loadBal() {
 $('#bulk').addEventListener('submit', async e => {
   e.preventDefault();
   const rows = $('#rows').value.split('\n').map(l => l.split(',').map(s => s.trim())).filter(r => r[0]).map(([phone, amount]) => ({ phone, amount: Number(amount) }));
-  const d = await busy(e.submitter, () => api('/api/bulk', { rows, ttlMinutes: Number($('#ttl').value), org: $('#org').value }));
+  const d = await busy(e.submitter, () => api('/api/bulk', { rows, ttlMinutes: Number($('#ttl').value), org: $('#org').value, pin: $('#org-pin').value }));
   if (!d.ok) return render('#out', errorBox(d.error));
   render('#out', `
     <div class="card">
@@ -80,7 +81,7 @@ $('#bulk').addEventListener('submit', async e => {
       ${txLink(d.txUrl, 'View the single transaction on Mantlescan ↗')}
       <div class="tbl"><table>
         <thead><tr><th>Check</th><th>Family's phone</th><th class="num">Amount</th><th class="num">Code</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr><td class="hash">#${d.ids[i]}</td><td><a class="hash" target="_blank" rel="noopener" href="/phone.html?n=${encodeURIComponent(d.phones[i])}&from=${encodeURIComponent($('#org').value)}">${esc(d.phones[i])} ↗</a></td><td class="num">${usd(r.amount)}</td><td class="num hash">${d.codes[i]}</td></tr>`).join('')}</tbody>
+        <tbody>${rows.map((r, i) => `<tr><td class="hash">#${d.ids[i]}</td><td><a class="hash" target="_blank" rel="noopener" href="${d.links[i]}">${esc(d.phones[i])} ↗</a></td><td class="num">${usd(r.amount)}</td><td class="num hash">${d.codes[i]}</td></tr>`).join('')}</tbody>
       </table></div>
     </div>`);
   loadBal();
