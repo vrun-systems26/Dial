@@ -1,4 +1,4 @@
-// Shared helpers for the Dial-a-Dollar pages.
+// Shared helpers for the Dial pages.
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = a => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '');

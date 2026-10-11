@@ -7,7 +7,7 @@ interface IERC20 {
 }
 
 /// @title DialChecks
-/// @notice On-chain "checks" for Dial-a-Dollar. A sender locks stablecoin for a receiver.
+/// @notice On-chain "checks" for Dial. A sender locks stablecoin for a receiver.
 ///         The receiver cashes it by revealing the claim secret (paying a cash-out shop in the
 ///         same step), or, once it expires unclaimed, anyone can trigger the refund to the sender.
 /// @dev    claimHash = keccak256(abi.encodePacked(claimSecret)). The 32-byte secret stays off-chain

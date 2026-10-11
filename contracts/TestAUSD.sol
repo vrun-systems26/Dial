@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /// @title Test AUSD
 /// @notice Testnet stand-in for Agora's AUSD (6 decimals, like real AUSD).
-///         On mainnet, Dial-a-Dollar points at the real AUSD contract on Mantle instead.
+///         On mainnet, Dial points at the real AUSD contract on Mantle instead.
 contract TestAUSD {
     string public constant name = "Test AUSD";
     string public constant symbol = "tAUSD";

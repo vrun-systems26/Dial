@@ -1,4 +1,4 @@
-// Dial-a-Dollar API: voice-agent tools, cash-out, bulk payouts, refunds and the live ledger feed.
+// Dial API: voice-agent tools, cash-out, bulk payouts, refunds and the live ledger feed.
 const path = require('path');
 const express = require('express');
 const chain = require('../lib/chain');
