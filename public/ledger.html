@@ -65,7 +65,7 @@ async function loadFeed() {
 
   // The refund agent: as soon as an uncollected transfer runs out of time, send it back.
   const expired = d.items.filter(i => i.type === 'CheckCreated' && !settled.has(i.id) && i.expiresAt <= now);
-  if (expired.length && Date.now() - lastAutoRefund > 20000) {
+  if (expired.length && Date.now() - lastAutoRefund > 8000) {
     lastAutoRefund = Date.now();
     render('#keeper-result', `<div class="result"><span class="tick">↺</span><div>${expired.length} transfer${expired.length > 1 ? 's' : ''} ran out of time. The refund agent is sending the money back…</div></div>`);
     const r = await api('/api/keeper', {});
@@ -93,7 +93,7 @@ config().then(async c => {
   $('#contract').href = c.checksUrl;
   $('#contract').textContent = `Contract ${short(c.contracts.checks)} ↗`;
   loadFeed();
-  setInterval(loadFeed, 5000);
+  setInterval(loadFeed, 3000);
 });
 </script>
 </body>

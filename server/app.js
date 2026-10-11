@@ -41,12 +41,13 @@ function normalizePhone(p) {
   return digits.length >= 8 && digits.length <= 15 ? '+' + digits : null;
 }
 
-// How long the receiver has to collect: 2 minutes (for live demos) up to 30 days.
+// How long the receiver has to collect: 15 seconds (for live demos) up to 30 days.
 function ttlFrom(minutes) {
   const m = Number(minutes);
-  return m > 0 ? Math.min(Math.max(Math.round(m * 60), 60), 30 * 24 * 3600) : DEFAULT_TTL;
+  return m > 0 ? Math.min(Math.max(Math.round(m * 60), 10), 30 * 24 * 3600) : DEFAULT_TTL;
 }
 function windowWords(ttl) {
+  if (ttl < 60) return `${ttl} seconds`;
   if (ttl % 86400 === 0) return `${ttl / 86400} day${ttl === 86400 ? '' : 's'}`;
   if (ttl % 3600 === 0) return `${ttl / 3600} hour${ttl === 3600 ? '' : 's'}`;
   return `${Math.round(ttl / 60)} minute${ttl === 60 ? '' : 's'}`;
@@ -148,7 +149,7 @@ app.all('/api/keeper', wrap(async (req, res) => res.json({ ok: true, refunded: a
 app.post('/api/bulk', wrap(async (req, res) => {
   const rows = (req.body?.rows || []).map(r => ({ phone: normalizePhone(r.phone), amount: Number(r.amount) })).filter(r => r.phone && r.amount > 0);
   if (!rows.length || rows.length > 100) return res.status(400).json({ ok: false, error: 'Send between 1 and 100 rows of phone + amount.' });
-  const ttl = Math.max(60, Number(req.body.ttlMinutes || 7 * 24 * 60) * 60);
+  const ttl = ttlFrom(req.body.ttlMinutes || 7 * 24 * 60);
   const out = await chain.createChecksBulk(rows, ttl);
   // Each family gets their own text (when SMS is switched on).
   const org = String(req.body.org || 'Relief Fund').slice(0, 40);

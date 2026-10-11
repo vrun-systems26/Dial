@@ -41,6 +41,7 @@ const phoneLink = phone => `${location.origin}/phone.html?n=${encodeURIComponent
 function untilWords(ts) {
   const s = ts - Math.floor(Date.now() / 1000);
   if (s <= 0) return 'expired';
+  if (s < 60) return `${s}s left`;
   if (s < 3600) return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`;
   if (s < 86400) return `${Math.round(s / 3600)} h left`;
   return `${Math.round(s / 86400)} days left`;
