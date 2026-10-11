@@ -35,7 +35,7 @@ const DUPLICATE_WINDOW = 120; // seconds
 const caller = senders.demo;
 const SITE = process.env.SITE_URL || 'https://dial-a-dollar.vercel.app';
 
-// Whatever the caller calls their contact ("mom", "my friend") is used when talking back.
+// Whatever the caller calls their contact is used when talking back.
 const labelFor = (said, r) => (String(said || '').trim() ? String(said).trim() : r.name);
 
 // Any phone number gets its own custodial wallet, so Dial works for numbers it has never seen.
@@ -125,7 +125,7 @@ app.post('/api/session', wrap(async (req, res) => {
   const w = await chain.ensureDevice(id);
   res.json({ ok: true, address: w.address });
 }));
-app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ recipient: req.query.recipient || 'Relative', recipient_phone: req.query.phone }))));
+app.get('/api/status', wrap(async (req, res) => res.json(await checkStatus({ recipient: req.query.recipient || 'your contact', recipient_phone: req.query.phone }))));
 
 // ---- Receiver side ----
 // Simulated SMS inbox: in production this text is sent by SMS (e.g. Twilio).
@@ -148,7 +148,7 @@ app.get('/api/inbox', wrap(async (req, res) => {
 // Shop cash-out. Simple per-phone attempt limit so codes can't be guessed.
 const attempts = new Map();
 app.post('/api/cashout', wrap(async (req, res) => {
-  const { code, shopId = 'lupita' } = req.body || {};
+  const { code, shopId = 'partner' } = req.body || {};
   const phone = normalizePhone(req.body?.phone);
   if (!phone) return res.status(400).json({ ok: false, error: 'Enter the customer phone number with country code.' });
   const shop = shops[shopId];
@@ -243,8 +243,8 @@ app.get('/api/config', (req, res) => res.json({
   explorer: chain.EXPLORER,
   contracts: { checks: chain.deployments.checks, token: chain.deployments.token },
   checksUrl: chain.addrUrl(chain.deployments.checks),
-  receiver: { name: 'Relative' },
-  shop: { id: 'lupita', ...shops.lupita },
+  receiver: { name: 'Receiver' },
+  shop: { id: 'partner', ...shops.partner },
   smsEnabled: sms.enabled(),
   names: {
     [chain.shopWallet.address]: '@shop',

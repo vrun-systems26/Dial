@@ -18,7 +18,7 @@
 <main class="page">
   <section class="intro">
     <span class="eyebrow">Step 3 of 3</span>
-    <h1><span data-name="recipient">Relative</span> <em>collects.</em></h1>
+    <h1><span data-name="recipient">Receiver</span> <em>collects.</em></h1>
     <p class="lede">They get a text with a code. At any partner shop, the shopkeeper enters it and hands over cash. No bank, no app.</p>
   </section>
 
@@ -31,7 +31,7 @@
     <div class="qr" id="qr" aria-label="QR code for the receiver's phone page"></div>
     <div style="display:grid;gap:8px">
       <h2>Open it on a real phone</h2>
-      <p class="lede" style="font-size:1rem">Scan with any phone to become <span data-name="recipient">Relative</span>'s phone. The texts and codes show up there live.</p>
+      <p class="lede" style="font-size:1rem">Scan with any phone to become <span data-name="recipient">Receiver</span>'s phone. The texts and codes show up there live.</p>
       <a class="hash" id="ph-link" target="_blank" rel="noopener">phone link ↗</a>
     </div>
   </section>
@@ -39,8 +39,8 @@
   <div class="divider">at the shop</div>
 
   <section class="card">
-    <div class="split"><h2 data-name="shop">Corner Shop</h2><span class="label">Cash-out shop</span></div>
-    <label class="field"><span>Shop name</span><input class="input" id="shop-name"></label>
+    <div class="split"><h2 data-name="shop">Partner shop</h2><span class="label">Cash-out shop</span></div>
+    <label class="field"><span>Shop name</span><input class="input" id="shop-name" placeholder="Shop name"></label>
     <form id="cash-form" style="display:grid;gap:18px">
       <label class="field"><span>Customer's phone</span><input class="input" id="c-phone" type="tel" inputmode="tel"></label>
       <label class="field"><span>6-digit code</span><input class="input" id="c-code" inputmode="numeric" maxlength="7" placeholder="Ask the customer for their code" autocomplete="off"></label>
@@ -64,16 +64,16 @@ async function loadInbox() {
 
 $('#cash-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const d = await busy(e.submitter, () => api('/api/cashout', { phone: $('#c-phone').value, code: $('#c-code').value, shopId: 'lupita' }));
+  const d = await busy(e.submitter, () => api('/api/cashout', { phone: $('#c-phone').value, code: $('#c-code').value, shopId: 'partner' }));
   render('#cash-result', d.ok
-    ? `<div class="payout"><span class="label">Hand ${esc(getNames().recipient)}</span><b>${d.payoutLocal.toLocaleString()} ${d.currency}</b><span class="hash">${usd(d.amountUsd)} AUSD paid to the shop on-chain</span>${txLink(d.txUrl)}</div>`
+    ? `<div class="payout"><span class="label">Hand ${esc(recipientDisplay())}</span><b>${d.payoutLocal.toLocaleString()} ${d.currency}</b><span class="hash">${usd(d.amountUsd)} AUSD paid to the shop on-chain</span>${txLink(d.txUrl)}</div>`
     : errorBox(d.error));
   if (d.ok) $('#c-code').value = '';
   loadInbox();
 });
 
 $('#shop-name').value = getNames().shop;
-$('#shop-name').addEventListener('change', () => setNames({ ...getNames(), shop: $('#shop-name').value.trim() || DEFAULT_NAMES.shop }));
+$('#shop-name').addEventListener('change', () => setNames({ ...getNames(), shop: $('#shop-name').value.trim() }));
 const phone = receiverPhone();
 $('#c-phone').value = phone;
 $('#ph-num').textContent = phone;

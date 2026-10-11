@@ -33,7 +33,7 @@ const tools = [
         description: 'Transfer details',
         required: ['recipient', 'amount_usd', 'pin'],
         properties: {
-          recipient: { type: 'string', description: 'Who to send to, as the caller said it, e.g. "mom", "my friend" or {{recipient_name}}.' },
+          recipient: { type: 'string', description: 'Who to send to, as the caller said it, as the caller said it, e.g. {{recipient_name}}.' },
           amount_usd: { type: 'number', description: 'The single amount the caller confirmed, in US dollars with cents, e.g. 31.99 or 50.' },
           pin: { type: 'string', description: 'The 4-digit PIN the caller spoke, digits only, e.g. "4179".' },
           // Filled automatically from the caller's saved settings on the site.
@@ -60,7 +60,7 @@ const tools = [
         description: 'Which contact to check',
         required: ['recipient'],
         properties: {
-          recipient: { type: 'string', description: 'The contact, e.g. "mom".' },
+          recipient: { type: 'string', description: 'The contact, as the caller said it.' },
           recipient_phone: { type: 'string', dynamic_variable: 'recipient_phone' },
         },
       },
@@ -69,12 +69,12 @@ const tools = [
 ];
 
 const prompt = `You are Dial, a phone agent that helps people send money to family in other countries.
-The caller is {{sender_name}}. Their saved contact is {{recipient_name}}, in Guadalajara, Mexico. Whatever the caller calls that person (mom, dad, a friend, a cousin, {{recipient_name}}), it is the same saved contact. Use the caller's word when you talk about them.
+The caller is {{sender_name}}. Their saved contact is {{recipient_name}}, in Guadalajara, Mexico. Whatever name or relationship the caller uses for that person, it is the same saved contact. Use the caller's word when you talk about them.
 
 How to handle a transfer:
 1. Find out how much to send, in US dollars, between $1 and $500. Cents are fine.
 2. If the caller says more than one amount, or changes their mind mid-sentence, do not guess. Ask: "Just to be sure, how much should I send?" and wait for one clear amount.
-3. Read it back with the exact cents: "$31.99 to your mom. It arrives in seconds with no fee. What's your PIN?"
+3. Read it back with the exact cents: "$31.99 to <their name>. It arrives in seconds with no fee. What's your PIN?"
 4. When you have the PIN, call send_money once, with the recipient, the exact amount and the PIN. Never call it without a PIN, never call it twice for the same request, and never repeat the PIN out loud.
 5. Read back the result simply: the money is locked for them, they get a text with a code, they can collect cash at a partner shop within the time the result says, and unclaimed money comes back automatically. If the result says duplicate, tell the caller it already went through and nothing extra was sent.
 
@@ -101,14 +101,14 @@ Rules:
     name: 'Dial',
     conversation_config: {
       agent: {
-        first_message: 'Hi {{sender_name}}, this is Dial. How much would you like to send to {{recipient_name}} today?',
+        first_message: 'Hi {{sender_name}}, this is Dial. Who would you like to send money to, and how much?',
         language: 'en',
         prompt: { prompt, llm: 'gemini-2.5-flash', temperature: 0.2, tool_ids: toolIds },
-        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'there', recipient_name: 'Relative', recipient_phone: '+523312345678', expiry_minutes: 10080, device_id: '' } },
+        dynamic_variables: { dynamic_variable_placeholders: { sender_name: 'there', recipient_name: 'your contact', recipient_phone: '+523312345678', expiry_minutes: 10080, device_id: '' } },
       },
       tts: { model_id: 'eleven_flash_v2' },
       language_presets: {
-        es: { overrides: { agent: { language: 'es', first_message: 'Hola {{sender_name}}, habla Dial. ¿Cuánto le quieres enviar a {{recipient_name}} hoy?' } } },
+        es: { overrides: { agent: { language: 'es', first_message: 'Hola {{sender_name}}, habla Dial. ¿A quién le quieres enviar dinero, y cuánto?' } } },
       },
     },
     platform_settings: {

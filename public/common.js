@@ -73,7 +73,7 @@ const config = () => (configPromise ||= api('/api/config').then(c => {
   return c;
 }));
 // Settings the user picks on the Call page (kept in this browser): names, the receiver's
-// phone number and how long they have to collect. Defaults: You → Relative, a private demo number, 7 days.
+// phone number and how long they have to collect. Defaults: blank names, a private demo number, 7 days.
 // A private demo phone number for this browser, so its texts and codes are only yours.
 function demoPhone() {
   let p = '';
@@ -86,10 +86,14 @@ function demoPhone() {
   return p;
 }
 const DEMO_PHONE = demoPhone();
-const DEFAULT_NAMES = { sender: 'You', recipient: 'Relative', phone: '', expiry: '10080', shop: 'Corner Shop' };
+const DEFAULT_NAMES = { sender: '', recipient: '', phone: '', expiry: '10080', shop: '' };
+// What to show when a name is blank.
+const senderDisplay = () => getNames().sender || 'Sender';
+const recipientDisplay = () => getNames().recipient || 'Receiver';
+const shopDisplay = () => getNames().shop || 'Partner shop';
 // What the voice agent calls you ("Hi there" until you set a name).
-const senderLabel = () => (getNames().sender && getNames().sender !== 'You' ? getNames().sender : 'Someone');
-const spokenName = () => (getNames().sender && getNames().sender !== 'You' ? getNames().sender : 'there');
+const senderLabel = () => getNames().sender || 'Someone';
+const spokenName = () => getNames().sender || 'there';
 const receiverPhone = () => getNames().phone || DEMO_PHONE;
 // The receiver's private link (with its secret key) comes from the server after a PIN check.
 function receiverLinkFor(phone) {
@@ -121,15 +125,16 @@ function setNames(n) {
 // Fill every element marked data-name="sender" / "recipient" with the chosen names.
 function applyNames() {
   const n = getNames();
-  document.querySelectorAll('[data-name]').forEach(el => { el.textContent = n[el.dataset.name] || el.textContent; });
+  const shown = { sender: senderDisplay(), recipient: recipientDisplay(), shop: shopDisplay() };
+  document.querySelectorAll('[data-name]').forEach(el => { el.textContent = shown[el.dataset.name] || el.textContent; });
 }
 document.addEventListener('DOMContentLoaded', applyNames);
 
 const nameOf = (cfg, addr) => {
   const v = cfg.names?.[addr];
-  if (v === '@sender') return getNames().sender;
-  if (v === '@recipient') return getNames().recipient;
-  if (v === '@shop') return getNames().shop;
+  if (v === '@sender') return senderDisplay();
+  if (v === '@recipient') return recipientDisplay();
+  if (v === '@shop') return shopDisplay();
   return v || short(addr);
 };
 
