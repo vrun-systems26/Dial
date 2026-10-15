@@ -4,7 +4,7 @@
 
 Dial lets anyone send money home by talking to a voice agent in their own language. It locks digital dollars for their family on the Mantle blockchain in seconds; the family collects cash at a corner shop with a 6-digit code, and anything they don't collect is refunded automatically. No smartphone, bank account or app needed on either side.
 
-**Live:** https://dial-a-dollar.vercel.app · Built at B@BHacks 2.0 (Track 2: Decentralized AI Primitives & Autonomous On-Chain Agents)
+**Live:** https://dial-a-dollar.vercel.app
 
 ## Why
 
